@@ -5,7 +5,7 @@
 
         <!-- Dashboard -->
         <li class="nav-item">
-            <a class="nav-link" style="border-left: 3px solid #1a76d1;" href="#">
+            <a class="nav-link" style="border-left: 3px solid #1a76d1;" href="{% url 'admin_dashboard'%}">
                 <i class="bi bi-speedometer2" style="color: #1a76d1;"></i>
                 <span>Dashboard</span>
             </a>
@@ -453,7 +453,7 @@
         </li>
 
         <li class="nav-item">
-            <a class="nav-link collapsed" href="#">
+            <a class="nav-link collapsed" href="{% url 'logout'%}">
                 <i class="bi bi-box-arrow-right" style="color: #e74c3c;"></i>
                 <span>Logout</span>
             </a>
