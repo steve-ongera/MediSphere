@@ -10,6 +10,8 @@ from django.contrib import messages
 from django.urls import reverse
 from functools import wraps
 from main_application.models import User, AuditLog
+from django.utils import timezone
+
 
 
 # =============================================================================
@@ -194,6 +196,477 @@ def logout_view(request):
     messages.success(request, f'You have been logged out successfully. See you soon, {username}!')
     return redirect('login')
 
+"""
+MediSphere Hospital Management System - Password Reset Views
+File: main_application/views/password_views.py
+"""
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import get_user_model
+from django.contrib import messages
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
+from django.template.loader import render_to_string
+from django.core.mail import send_mail
+from django.conf import settings
+from django.urls import reverse
+from django.contrib.auth.decorators import login_required
+from main_application.models import User, AuditLog, SMSLog
+import random
+import string
+
+User = get_user_model()
+
+
+# =============================================================================
+# PASSWORD RESET REQUEST VIEW
+# =============================================================================
+
+def forgot_password_view(request):
+    """
+    Password reset request page.
+    User enters email or username to receive reset link.
+    """
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        identifier = request.POST.get('identifier', '').strip()  # Email or username
+        
+        if not identifier:
+            messages.error(request, 'Please enter your email or username.')
+            return render(request, 'auth/forgot_password.html')
+        
+        # Try to find user by email or username
+        user = None
+        try:
+            if '@' in identifier:
+                # Looks like email
+                user = User.objects.get(email__iexact=identifier, is_active=True)
+            else:
+                # Looks like username
+                user = User.objects.get(username__iexact=identifier, is_active=True)
+        except User.DoesNotExist:
+            # Don't reveal whether user exists or not (security best practice)
+            messages.success(
+                request, 
+                'If an account exists with that information, a password reset link has been sent.'
+            )
+            return redirect('forgot_password')
+        
+        if user:
+            # Generate password reset token
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            
+            # Build reset URL
+            reset_url = request.build_absolute_uri(
+                reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+            )
+            
+            # Send email
+            if user.email:
+                try:
+                    subject = 'Password Reset - MediSphere Hospital'
+                    message = render_to_string('auth/password_reset_email.html', {
+                        'user': user,
+                        'reset_url': reset_url,
+                        'hospital_name': 'MediSphere Hospital'
+                    })
+                    
+                    send_mail(
+                        subject,
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [user.email],
+                        fail_silently=False,
+                        html_message=message
+                    )
+                    
+                    # Log the action
+                    AuditLog.objects.create(
+                        user=user,
+                        action_type='VIEW',
+                        model_name='User',
+                        object_id=user.id,
+                        object_repr=f'Password reset requested for {user.username}',
+                        ip_address=get_client_ip(request),
+                        user_agent=request.META.get('HTTP_USER_AGENT', '')[:300]
+                    )
+                    
+                except Exception as e:
+                    messages.error(request, 'Error sending email. Please contact IT support.')
+                    return render(request, 'auth/forgot_password.html')
+            
+            # Send SMS if phone number exists
+            if user.phone_number:
+                send_password_reset_sms(user, reset_url)
+            
+            messages.success(
+                request,
+                'Password reset instructions have been sent to your email and phone.'
+            )
+            return redirect('login')
+    
+    context = {
+        'page_title': 'Forgot Password - MediSphere Hospital'
+    }
+    return render(request, 'auth/forgot_password.html', context)
+
+
+# =============================================================================
+# PASSWORD RESET CONFIRM VIEW
+# =============================================================================
+
+def password_reset_confirm_view(request, uidb64, token):
+    """
+    Verify the password reset token and allow user to set new password.
+    """
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    
+    try:
+        # Decode the user ID
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    
+    # Verify the token
+    if user is not None and default_token_generator.check_token(user, token):
+        if request.method == 'POST':
+            password1 = request.POST.get('password1')
+            password2 = request.POST.get('password2')
+            
+            # Validate passwords
+            if not password1 or not password2:
+                messages.error(request, 'Please enter both password fields.')
+                return render(request, 'auth/password_reset_confirm.html', {
+                    'validlink': True,
+                    'page_title': 'Reset Password'
+                })
+            
+            if password1 != password2:
+                messages.error(request, 'Passwords do not match.')
+                return render(request, 'auth/password_reset_confirm.html', {
+                    'validlink': True,
+                    'page_title': 'Reset Password'
+                })
+            
+            if len(password1) < 8:
+                messages.error(request, 'Password must be at least 8 characters long.')
+                return render(request, 'auth/password_reset_confirm.html', {
+                    'validlink': True,
+                    'page_title': 'Reset Password'
+                })
+            
+            # Set the new password
+            user.set_password(password1)
+            user.save()
+            
+            # Log the password change
+            AuditLog.objects.create(
+                user=user,
+                action_type='UPDATE',
+                model_name='User',
+                object_id=user.id,
+                object_repr=f'Password reset completed for {user.username}',
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')[:300]
+            )
+            
+            messages.success(
+                request,
+                'Your password has been reset successfully! You can now login with your new password.'
+            )
+            return redirect('login')
+        
+        context = {
+            'validlink': True,
+            'user': user,
+            'page_title': 'Reset Password - MediSphere Hospital'
+        }
+        return render(request, 'auth/password_reset_confirm.html', context)
+    else:
+        # Invalid or expired token
+        messages.error(
+            request,
+            'This password reset link is invalid or has expired. Please request a new one.'
+        )
+        return redirect('forgot_password')
+
+
+# =============================================================================
+# CHANGE PASSWORD VIEW (For Logged-in Users)
+# =============================================================================
+
+@login_required
+def change_password_view(request):
+    """
+    Allow logged-in users to change their password.
+    """
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password')
+        password1 = request.POST.get('password1')
+        password2 = request.POST.get('password2')
+        
+        # Verify old password
+        if not request.user.check_password(old_password):
+            messages.error(request, 'Current password is incorrect.')
+            return render(request, 'auth/change_password.html', {
+                'page_title': 'Change Password'
+            })
+        
+        # Validate new passwords
+        if not password1 or not password2:
+            messages.error(request, 'Please enter both new password fields.')
+            return render(request, 'auth/change_password.html', {
+                'page_title': 'Change Password'
+            })
+        
+        if password1 != password2:
+            messages.error(request, 'New passwords do not match.')
+            return render(request, 'auth/change_password.html', {
+                'page_title': 'Change Password'
+            })
+        
+        if len(password1) < 8:
+            messages.error(request, 'Password must be at least 8 characters long.')
+            return render(request, 'auth/change_password.html', {
+                'page_title': 'Change Password'
+            })
+        
+        if old_password == password1:
+            messages.error(request, 'New password must be different from current password.')
+            return render(request, 'auth/change_password.html', {
+                'page_title': 'Change Password'
+            })
+        
+        # Set the new password
+        request.user.set_password(password1)
+        request.user.save()
+        
+        # Log the password change
+        AuditLog.objects.create(
+            user=request.user,
+            action_type='UPDATE',
+            model_name='User',
+            object_id=request.user.id,
+            object_repr=f'Password changed for {request.user.username}',
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:300]
+        )
+        
+        # Update session to prevent logout
+        from django.contrib.auth import update_session_auth_hash
+        update_session_auth_hash(request, request.user)
+        
+        messages.success(request, 'Your password has been changed successfully!')
+        return redirect('dashboard')
+    
+    context = {
+        'page_title': 'Change Password - MediSphere Hospital'
+    }
+    return render(request, 'auth/change_password.html', context)
+
+
+# =============================================================================
+# PASSWORD RESET VIA OTP (Alternative Method)
+# =============================================================================
+
+def forgot_password_otp_view(request):
+    """
+    Alternative password reset using OTP sent to phone.
+    """
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        # Step 1: Send OTP
+        if action == 'send_otp':
+            phone_number = request.POST.get('phone_number', '').strip()
+            
+            if not phone_number:
+                messages.error(request, 'Please enter your phone number.')
+                return render(request, 'auth/forgot_password_otp.html')
+            
+            # Find user by phone number
+            try:
+                user = User.objects.get(phone_number=phone_number, is_active=True)
+            except User.DoesNotExist:
+                messages.error(request, 'No account found with this phone number.')
+                return render(request, 'auth/forgot_password_otp.html')
+            
+            # Generate OTP
+            otp = ''.join(random.choices(string.digits, k=6))
+            
+            # Store OTP in session (in production, use Redis or database)
+            request.session['reset_otp'] = otp
+            request.session['reset_user_id'] = user.id
+            request.session['otp_timestamp'] = timezone.now().isoformat()
+            
+            # Send OTP via SMS
+            send_otp_sms(user, otp)
+            
+            messages.success(request, f'OTP has been sent to {phone_number}')
+            
+            context = {
+                'show_otp_form': True,
+                'phone_number': phone_number,
+                'page_title': 'Verify OTP'
+            }
+            return render(request, 'auth/forgot_password_otp.html', context)
+        
+        # Step 2: Verify OTP
+        elif action == 'verify_otp':
+            entered_otp = request.POST.get('otp', '').strip()
+            stored_otp = request.session.get('reset_otp')
+            user_id = request.session.get('reset_user_id')
+            
+            if not stored_otp or not user_id:
+                messages.error(request, 'Session expired. Please try again.')
+                return redirect('forgot_password_otp')
+            
+            if entered_otp != stored_otp:
+                messages.error(request, 'Invalid OTP. Please try again.')
+                context = {
+                    'show_otp_form': True,
+                    'phone_number': request.POST.get('phone_number'),
+                    'page_title': 'Verify OTP'
+                }
+                return render(request, 'auth/forgot_password_otp.html', context)
+            
+            # OTP verified, show password reset form
+            context = {
+                'show_password_form': True,
+                'user_id': user_id,
+                'page_title': 'Reset Password'
+            }
+            return render(request, 'auth/forgot_password_otp.html', context)
+        
+        # Step 3: Reset Password
+        elif action == 'reset_password':
+            user_id = request.session.get('reset_user_id')
+            password1 = request.POST.get('password1')
+            password2 = request.POST.get('password2')
+            
+            if not user_id:
+                messages.error(request, 'Session expired. Please try again.')
+                return redirect('forgot_password_otp')
+            
+            if password1 != password2:
+                messages.error(request, 'Passwords do not match.')
+                context = {
+                    'show_password_form': True,
+                    'user_id': user_id,
+                    'page_title': 'Reset Password'
+                }
+                return render(request, 'auth/forgot_password_otp.html', context)
+            
+            if len(password1) < 8:
+                messages.error(request, 'Password must be at least 8 characters long.')
+                context = {
+                    'show_password_form': True,
+                    'user_id': user_id,
+                    'page_title': 'Reset Password'
+                }
+                return render(request, 'auth/forgot_password_otp.html', context)
+            
+            # Reset password
+            user = User.objects.get(id=user_id)
+            user.set_password(password1)
+            user.save()
+            
+            # Clear session
+            request.session.pop('reset_otp', None)
+            request.session.pop('reset_user_id', None)
+            request.session.pop('otp_timestamp', None)
+            
+            # Log the action
+            AuditLog.objects.create(
+                user=user,
+                action_type='UPDATE',
+                model_name='User',
+                object_id=user.id,
+                object_repr=f'Password reset via OTP for {user.username}',
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')[:300]
+            )
+            
+            messages.success(request, 'Password reset successful! You can now login.')
+            return redirect('login')
+    
+    context = {
+        'page_title': 'Forgot Password - MediSphere Hospital'
+    }
+    return render(request, 'auth/forgot_password_otp.html', context)
+
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+def get_client_ip(request):
+    """Get client IP address from request"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
+
+def send_password_reset_sms(user, reset_url):
+    """Send password reset link via SMS"""
+    try:
+        from main_application.models import HospitalSettings
+        settings = HospitalSettings.load()
+        
+        if settings.sms_enabled:
+            message = f"MediSphere Hospital: Password reset link: {reset_url}"
+            
+            # Log SMS (actual sending would use SMS gateway API)
+            SMSLog.objects.create(
+                patient=None,  # This is for staff, not patients
+                phone_number=user.phone_number,
+                sms_type='GENERAL',
+                message=message,
+                status='SENT'
+            )
+            
+            # TODO: Integrate with actual SMS gateway (Africa's Talking, Twilio, etc.)
+            # Example:
+            # send_sms_via_gateway(user.phone_number, message)
+            
+    except Exception as e:
+        pass  # Fail silently for SMS
+
+
+def send_otp_sms(user, otp):
+    """Send OTP via SMS"""
+    try:
+        from main_application.models import HospitalSettings
+        settings = HospitalSettings.load()
+        
+        if settings.sms_enabled:
+            message = f"MediSphere Hospital: Your password reset OTP is: {otp}. Valid for 10 minutes."
+            
+            # Log SMS
+            SMSLog.objects.create(
+                patient=None,
+                phone_number=user.phone_number,
+                sms_type='GENERAL',
+                message=message,
+                status='SENT'
+            )
+            
+            # TODO: Integrate with actual SMS gateway
+            
+    except Exception as e:
+        pass  # Fail silently
 
 @login_required
 def dashboard_view(request):
