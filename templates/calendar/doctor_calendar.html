@@ -1,0 +1,450 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Doctor Calendar{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1>Doctor Calendar</h1>
+    <nav>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="#">Home</a></li>
+        <li class="breadcrumb-item active">Calendar</li>
+        <li class="breadcrumb-item">Dr. {{ request.user.last_name }}</li>
+      </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section dashboard">
+    <div class="row">
+        <!-- Left side columns -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <form method="get" class="row g-3">
+                                <div class="col-md-8">
+                                    <label for="doctor_id" class="form-label">Select Doctor:</label>
+                                    <select name="doctor_id" id="doctor_id" class="form-select" onchange="this.form.submit()">
+                                        {% for doctor in doctors %}
+                                            <option value="{{ doctor.id }}" {% if doctor.id == selected_doctor.id %}selected{% endif %}>
+                                                Dr. {{ doctor }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    {% if selected_doctor %}
+                    <div class="calendar-header d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="card-title mb-0">Dr. {{ selected_doctor }} - {{ month_name }} {{ selected_year }}</h5>
+                        <div class="btn-group" role="group">
+                            <a href="?doctor_id={{ selected_doctor.id }}&month={{ prev_month.month }}&year={{ prev_month.year }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-chevron-left"></i> Previous
+                            </a>
+                            <a href="?doctor_id={{ selected_doctor.id }}&month={{ current_date.month }}&year={{ current_date.year }}" 
+                               class="btn btn-outline-secondary btn-sm">
+                                Today
+                            </a>
+                            <a href="?doctor_id={{ selected_doctor.id }}&month={{ next_month.month }}&year={{ next_month.year }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                Next <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered calendar-table">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th style="width: 14.28%">Mon</th>
+                                    <th style="width: 14.28%">Tue</th>
+                                    <th style="width: 14.28%">Wed</th>
+                                    <th style="width: 14.28%">Thu</th>
+                                    <th style="width: 14.28%">Fri</th>
+                                    <th style="width: 14.28%">Sat</th>
+                                    <th style="width: 14.28%">Sun</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for week in calendar_data %}
+                                    <tr>
+                                        {% for day in week %}
+                                            {% if day %}
+                                                <td class="day-selector {% if day.is_today %}is-today{% endif %} 
+                                                           {% if day.is_weekend %}is-weekend{% endif %}
+                                                           {% if day.is_on_leave %}is-on-leave{% endif %}
+                                                           workload-{{ day.workload_level }}"
+                                                    data-doctor-id="{{ selected_doctor.id }}"
+                                                    data-date="{{ day.date|date:'Y-m-d' }}"
+                                                    onclick="getDayDetails({{ selected_doctor.id }}, '{{ day.date|date:'Y-m-d' }}')">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <span class="fw-bold">{{ day.day }}</span>
+                                                        {% if day.appointment_count > 0 %}
+                                                            <span class="badge bg-primary rounded-pill">{{ day.appointment_count }}</span>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="small text-muted">
+                                                        <div>{{ day.workload_percentage }}% booked</div>
+                                                        <div>{{ day.total_hours }} hrs</div>
+                                                    </div>
+                                                </td>
+                                            {% else %}
+                                                <td class="bg-light"></td>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        No doctors available. Please add doctors to the system.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div><!-- End Left side columns -->
+
+        <!-- Right side columns -->
+        <div class="col-lg-4">
+            <!-- Calendar Legend -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Calendar Legend</h5>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="badge bg-primary me-2">&nbsp;</span>
+                            <small>Today</small>
+                        </li>
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="badge bg-success me-2">&nbsp;</span>
+                            <small>Available (0-30%)</small>
+                        </li>
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="badge bg-warning me-2">&nbsp;</span>
+                            <small>Moderate (31-70%)</small>
+                        </li>
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="badge bg-danger me-2">&nbsp;</span>
+                            <small>Full (71-100%)</small>
+                        </li>
+                        <li class="list-group-item d-flex align-items-center">
+                            <span class="badge bg-secondary me-2">&nbsp;</span>
+                            <small>On Leave</small>
+                        </li>
+                    </ul>
+                </div>
+            </div><!-- End Legend Card -->
+
+            <!-- Quick Stats -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Monthly Stats</h5>
+                    <div class="d-flex justify-content-between mb-3">
+                        <div class="text-center">
+                            <h6 class="mb-0">{{ monthly_stats.total_appointments }}</h6>
+                            <small class="text-muted">Appointments</small>
+                        </div>
+                        <div class="text-center">
+                            <h6 class="mb-0">{{ monthly_stats.available_days }}</h6>
+                            <small class="text-muted">Available Days</small>
+                        </div>
+                        <div class="text-center">
+                            <h6 class="mb-0">{{ monthly_stats.leave_days }}</h6>
+                            <small class="text-muted">Leave Days</small>
+                        </div>
+                    </div>
+                </div>
+            </div><!-- End Stats Card -->
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Quick Actions</h5>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'new_consultation'%}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-plus-circle"></i> New Appointment
+                        </a>
+                        <a href="{% url 'consultation_list'%}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-gear"></i> Manage consultations
+                        </a>
+                        <a href="#" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-calendar-x"></i> Request Leave
+                        </a>
+                    </div>
+                </div>
+            </div><!-- End Quick Actions -->
+        </div><!-- End Right side columns -->
+    </div>
+</section>
+
+<!-- Day Details Modal -->
+<div class="modal fade" id="dayDetailsModal" tabindex="-1" aria-labelledby="dayDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="dayDetailsModalLabel">Schedule Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="dayDetailsContent">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading schedule details...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .calendar-table td {
+        height: 100px;
+        vertical-align: top;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .calendar-table td:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .is-today {
+        border: 2px solid #1a76d1 !important;
+        background-color: #f0f7ff !important;
+    }
+    
+    .is-weekend {
+        background-color: #f8f9fa !important;
+    }
+    
+    .is-on-leave {
+        background-color: #f5f5f5 !important;
+        position: relative;
+        color: #999 !important;
+    }
+    
+    .is-on-leave::after {
+        content: "On Leave";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0,0,0,0.7);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.7em;
+    }
+    
+    .workload-light {
+        background-color: #e8f5e9 !important;
+    }
+    
+    .workload-moderate {
+        background-color: #fff8e1 !important;
+    }
+    
+    .workload-heavy {
+        background-color: #ffebee !important;
+    }
+    
+    .workload-overloaded {
+        background-color: #ffcdd2 !important;
+    }
+    
+    @media (max-width: 768px) {
+        .calendar-table td {
+            height: 60px;
+            font-size: 0.8em;
+            padding: 2px !important;
+        }
+        
+        .calendar-table td span {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function getDayDetails(doctorId, dateStr) {
+        // Show modal
+        var modal = new bootstrap.Modal(document.getElementById('dayDetailsModal'));
+        modal.show();
+        
+        // Reset content and show loading spinner
+        $('#dayDetailsContent').html(`
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading schedule details...</p>
+            </div>
+        `);
+        
+        // Make AJAX call to get day details
+        $.ajax({
+            url: `/calendar/doctor/${doctorId}/day/${dateStr}/`,
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                if (data.success) {
+                    renderDayDetails(data);
+                } else {
+                    $('#dayDetailsContent').html(`
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-circle me-2"></i>
+                            ${data.error || 'Error loading schedule details'}
+                        </div>
+                    `);
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#dayDetailsContent').html(`
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        Error loading data: ${error}
+                    </div>
+                `);
+            }
+        });
+    }
+    
+    function renderDayDetails(data) {
+        const date = new Date(data.date);
+        const formattedDate = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        let html = `
+            <div class="mb-4">
+                <h4 class="text-primary">Dr. ${data.doctor_name}</h4>
+                <h5 class="text-muted">${formattedDate}</h5>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Schedule Information</h5>
+                </div>
+                <div class="card-body">
+        `;
+        
+        if (data.is_on_leave) {
+            html += `
+                <div class="alert alert-info d-flex align-items-center">
+                    <i class="bi bi-umbrella me-2"></i>
+                    Doctor is on leave today
+                </div>
+            `;
+        }
+        
+        html += `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary text-white rounded-circle p-2 me-3">
+                            <i class="bi bi-pie-chart"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Workload</h6>
+                            <p class="mb-0">${data.workload_info.workload_percentage}% booked</p>
+                            <p class="mb-0">${data.workload_info.total_hours} scheduled hours</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="bi bi-clock me-2"></i>Available Times</h6>
+        `;
+        
+        if (data.schedules && data.schedules.length > 0) {
+            html += `<ul class="list-unstyled">`;
+            data.schedules.forEach(schedule => {
+                html += `
+                    <li class="mb-1">
+                        <span class="badge bg-primary me-2">${schedule.start_time} - ${schedule.end_time}</span>
+                        <small class="text-muted">Max ${schedule.max_patients} patients</small>
+                    </li>
+                `;
+            });
+            html += `</ul>`;
+        } else {
+            html += `<p class="text-muted">No schedule for this day</p>`;
+        }
+        
+        html += `
+                </div>
+            </div>
+        </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Appointments (${data.appointment_count})</h5>
+            </div>`;
+            
+        if (data.appointments && data.appointments.length > 0) {
+            html += `
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Time</th>
+                                <th>Patient</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            data.appointments.forEach(apt => {
+                html += `
+                    <tr>
+                        <td><strong>${apt.time}</strong></td>
+                        <td>${apt.patient_name}</td>
+                        <td><span class="badge bg-info">${apt.type}</span></td>
+                        <td><span class="badge ${apt.status === 'Confirmed' ? 'bg-success' : 'bg-warning'}">${apt.status}</span></td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-calendar-x text-muted fs-1 mb-3"></i>
+                    <h5 class="text-muted">No appointments scheduled</h5>
+                </div>
+            `;
+        }
+        
+        html += `</div>`;
+        
+        $('#dayDetailsContent').html(html);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,416 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}Doctor Dashboard{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1>Doctor Dashboard</h1>
+    <nav>
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="#">Home</a></li>
+        <li class="breadcrumb-item active">Dashboard</li>
+        <li class="breadcrumb-item">Dr. {{ request.user.last_name }}</li>
+      </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section dashboard">
+    <div class="row">
+      <!-- Left side columns -->
+      <div class="col-lg-8">
+        <div class="row">
+          <!-- Doctor Profile Card -->
+          <div class="col-xxl-4 col-md-6">
+            <div class="card info-card" style="border-left: 5px solid #1a76d1;">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #1a76d1;">
+                    <i class="bi bi-person-badge text-white"></i>
+                  </div>
+                  <div class="ps-3">
+                    <h5 class="card-title mb-0">Dr. {{ request.user.get_full_name }}</h5>
+                    <span class="small text-muted">{{ doctor.specialization|default:"General Practitioner" }}</span>
+                    <div class="employee-status mt-1">
+                      <span class="badge bg-success">
+                        On Duty
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- End Profile Card -->
+
+          <!-- Today's Consultations Card -->
+          <div class="col-xxl-4 col-md-6">
+            <div class="card info-card" style="border-left: 5px solid #4CAF50;">
+              <div class="card-body">
+                <h5 class="card-title">Today's Consultations</h5>
+                <div class="d-flex align-items-center">
+                  <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #4CAF50;">
+                    <i class="bi bi-clipboard2-pulse text-white"></i>
+                  </div>
+                  <div class="ps-3">
+                    <h6>{{ todays_consultations.count }}</h6>
+                    <span class="text-muted small">Patients</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- End Consultations Card -->
+
+          <!-- Pending Prescriptions Card -->
+          <div class="col-xxl-4 col-md-6">
+            <div class="card info-card" style="border-left: 5px solid #2196F3;">
+              <div class="card-body">
+                <h5 class="card-title">Pending Prescriptions</h5>
+                <div class="d-flex align-items-center">
+                  <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #2196F3;">
+                    <i class="bi bi-prescription text-white"></i>
+                  </div>
+                  <div class="ps-3">
+                    <h6>{{ pending_prescriptions.count }}</h6>
+                    <span class="text-muted small">To review</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- End Prescriptions Card -->
+
+          <!-- Quick Actions -->
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">Quick Actions</h5>
+                <div class="row text-center">
+                  <div class="col-md-3 col-6 mb-3">
+                    <a href="{% url 'new_consultation'%}" class="btn btn-primary btn-sm w-100 py-2">
+                      <i class="bi bi-clipboard-plus"></i><br>
+                      New Consultation
+                    </a>
+                  </div>
+                  <div class="col-md-3 col-6 mb-3">
+                    <a href="{% url 'patients-list'%}" class="btn btn-outline-primary btn-sm w-100 py-2">
+                      <i class="bi bi-search"></i><br>
+                      Patient Records
+                    </a>
+                  </div>
+                  <div class="col-md-3 col-6 mb-3">
+                    <a href="{% url 'medicine-list'%}" class="btn btn-outline-primary btn-sm w-100 py-2">
+                      <i class="bi bi-capsule"></i><br>
+                      Pharmacy
+                    </a>
+                  </div>
+                  <div class="col-md-3 col-6 mb-3">
+                    <a href="{% url 'doctor_calendar_view'%}" class="btn btn-outline-primary btn-sm w-100 py-2">
+                      <i class="bi bi-calendar-week"></i><br>
+                      My Schedule
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- End Quick Actions -->
+
+          <!-- Today's Appointments -->
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">Today's Appointments</h5>
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Time</th>
+                        <th>Patient</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for appointment in todays_appointments|slice:":5" %}
+                      <tr>
+                        <td>{{ appointment.scheduled_time|time:"H:i" }}</td>
+                        <td>{{ appointment.patient.first_name }}  {{ appointment.patient.last_name }}</td>
+                        <td>{{ appointment.reason|truncatechars:20 }}</td>
+                        <td>
+                          <span class="badge bg-{% if appointment.status == 'COMPLETED' %}success{% elif appointment.status == 'CANCELLED' %}danger{% elif appointment.status == 'IN_PROGRESS' %}info{% else %}warning{% endif %}">
+                            {{ appointment.get_status_display }}
+                          </span>
+                        </td>
+                        <td>
+                          {% if appointment.status == 'SCHEDULED' %}
+                          <a href="{% url 'start_consultation' appointment.id %}" class="btn btn-sm btn-primary">Start</a>
+                          {% else %}
+                          <a href="{% url 'consultation_detail' appointment.consultation.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                          {% endif %}
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div><!-- End Today's Appointments -->
+
+          <!-- Recent Consultations -->
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">Recent Consultations</h5>
+                <div class="row">
+                  {% for consultation in recent_consultations %}
+                  <div class="col-md-6 mb-3">
+                    <div class="card border-primary">
+                      <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                          <h6 class="card-title">{{ consultation.appointment.patient.first_name }} {{ consultation.appointment.patient.last_name }}</h6>
+                         
+                        </div>
+                        <p class="card-text small">
+                          <i class="bi bi-calendar"></i> {{ consultation.created_at|date:"M d, Y H:i" }}<br>
+                          <i class="bi bi-clipboard-pulse"></i> {{ consultation.diagnosis|truncatechars:50|default:"No diagnosis recorded" }}
+                        </p>
+                        <div class="d-flex justify-content-between">
+                          <a href="{% url 'consultation_detail' consultation.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                          {% if consultation.status != 'COMPLETED' %}
+                          <a href="#" class="btn btn-sm btn-primary">Complete</a>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div><!-- End Recent Consultations -->
+        </div>
+      </div><!-- End Left side columns -->
+
+      <!-- Right side columns -->
+      <div class="col-lg-4">
+        <!-- Clinic Announcements -->
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Medical Updates</h5>
+            <div class="news">
+              
+              <div class="post-item bg-light p-2 mb-2 rounded">
+                <h6>WHO Warns of Rising Antibiotic Resistance</h6>
+                <p class="small">The World Health Organization reports a concerning increase in antibiotic resistance worldwide due to overuse and misuse of medication...</p>
+                <div class="d-flex justify-content-between">
+                  <span class="small text-muted">2 hours ago</span>
+                  <a href="#" class="small">Read More</a>
+                </div>
+              </div>
+
+              <div class="post-item p-2 mb-2 rounded">
+                <h6>New Study Links Sleep Deprivation to Heart Disease</h6>
+                <p class="small">Researchers have found that individuals who regularly sleep less than 6 hours have a higher risk of developing cardiovascular problems...</p>
+                <div class="d-flex justify-content-between">
+                  <span class="small text-muted">6 hours ago</span>
+                  <a href="#" class="small">Read More</a>
+                </div>
+              </div>
+
+              <div class="post-item bg-light p-2 mb-2 rounded">
+                <h6>Updated COVID-19 Booster Now Available</h6>
+                <p class="small">The Ministry of Health has announced that a new booster dose targeting recent COVID variants is now available at public hospitals...</p>
+                <div class="d-flex justify-content-between">
+                  <span class="small text-muted">1 day ago</span>
+                  <a href="#" class="small">Read More</a>
+                </div>
+              </div>
+
+              <div class="post-item p-2 mb-2 rounded">
+                <h6>Kenya Launches National Mental Health Campaign</h6>
+                <p class="small">A nationwide campaign has been launched to raise awareness and reduce stigma associated with mental health conditions...</p>
+                <div class="d-flex justify-content-between">
+                  <span class="small text-muted">2 days ago</span>
+                  <a href="#" class="small">Read More</a>
+                </div>
+              </div>
+
+              <div class="post-item bg-light p-2 mb-2 rounded">
+                <h6>New Breakthrough in Diabetes Management</h6>
+                <p class="small">Scientists have developed a smart insulin patch that could revolutionize diabetes management by detecting glucose levels automatically...</p>
+                <div class="d-flex justify-content-between">
+                  <span class="small text-muted">3 days ago</span>
+                  <a href="#" class="small">Read More</a>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div><!-- End Announcements -->
+
+        <!-- Patient Alerts -->
+        <div class="card border-danger">
+          <div class="card-header bg-danger text-white">
+            <h5 class="card-title mb-0"><i class="bi bi-exclamation-triangle"></i> Patient Alerts</h5>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-danger">
+              <h6>Critical Cases: <strong>{{ critical_patients.count }}</strong></h6>
+            </div>
+            <ul class="list-group list-group-flush">
+              {% for patient in critical_patients|slice:":3" %}
+              <li class="list-group-item small">
+                <i class="bi bi-heart-pulse text-danger"></i>
+                {{ patient.full_name }} - {{ patient.condition }}
+              </li>
+              {% endfor %}
+              {% if critical_patients.count > 3 %}
+              <li class="list-group-item text-center">
+                <a href="#" class="small">+ {{ critical_patients.count|add:"-3" }} more</a>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+        </div><!-- End Patient Alerts -->
+
+        <!-- Prescription Alerts -->
+        <div class="card border-warning">
+          <div class="card-header bg-warning text-white">
+            <h5 class="card-title mb-0"><i class="bi bi-capsule"></i> Prescription Alerts</h5>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-warning">
+              <h6>Pending Approvals: <strong>{{ pending_approvals.count }}</strong></h6>
+            </div>
+            <ul class="list-group list-group-flush">
+              {% for prescription in pending_approvals|slice:":3" %}
+              <li class="list-group-item small">
+                <i class="bi bi-prescription text-primary"></i>
+                {{ prescription.medicine.name }} for {{ prescription.patient.full_name }}
+                <a href="{% url 'review_prescription' prescription.id %}" class="btn btn-sm btn-outline-primary float-end">Review</a>
+              </li>
+              {% endfor %}
+              {% if pending_approvals.count > 3 %}
+              <li class="list-group-item text-center">
+                <a href="{% url 'prescription_list' %}" class="small">+ {{ pending_approvals.count|add:"-3" }} more</a>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+        </div><!-- End Prescription Alerts -->
+
+        <!-- Medical Resources -->
+        <div class="card">
+          <div class="card-body text-center" style="background-color: #1a76d1; color: white;">
+            <h5 class="card-title">Medical Resources</h5>
+            <div class="resources-carousel">
+              <div class="resource-item">
+                <i class="bi bi-journal-medical display-6"></i>
+                <p class="mb-0">Clinical Guidelines</p>
+              </div>
+              <div class="resource-item">
+                <i class="bi bi-capsule-pill display-6"></i>
+                <p class="mb-0">Drug Database</p>
+              </div>
+              <div class="resource-item">
+                <i class="bi bi-clipboard2-pulse display-6"></i>
+                <p class="mb-0">Diagnosis Tools</p>
+              </div>
+            </div>
+          </div>
+        </div><!-- End Resources Card -->
+      </div><!-- End Right side columns -->
+    </div>
+</section>
+
+<style>
+  /* Doctor Dashboard Specific Styles */
+  .card-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .consultation-card {
+    transition: all 0.3s ease;
+    border-left: 3px solid #1a76d1;
+  }
+  
+  .consultation-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(26, 118, 209, 0.1);
+  }
+  
+  .resources-carousel {
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+  }
+  
+  .resource-item {
+    padding: 10px;
+  }
+  
+  .resource-item i {
+    color: white;
+    margin-bottom: 10px;
+  }
+  
+  .badge-status {
+    font-size: 0.75rem;
+    padding: 0.25em 0.4em;
+  }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Close alert messages
+  document.querySelectorAll('.btn-close').forEach(button => {
+    button.addEventListener('click', function() {
+      this.closest('.alert').style.display = 'none';
+    });
+  });
+  
+  // Simple carousel for resources
+  const resourceItems = document.querySelectorAll('.resource-item');
+  let currentResource = 0;
+  
+  function rotateResources() {
+    resourceItems.forEach(item => item.style.display = 'none');
+    resourceItems[currentResource].style.display = 'block';
+    currentResource = (currentResource + 1) % resourceItems.length;
+  }
+  
+  // Show first resource immediately
+  resourceItems.forEach((item, index) => {
+    if(index !== 0) item.style.display = 'none';
+  });
+  
+  // Rotate every 3 seconds
+  setInterval(rotateResources, 3000);
+  
+  // Auto-refresh appointments every 5 minutes
+  setInterval(() => {
+    fetch(window.location.href)
+      .then(response => response.text())
+      .then(html => {
+        const parser = new DOMParser();
+        const newDoc = parser.parseFromString(html, 'text/html');
+        const newTable = newDoc.querySelector('.table-responsive');
+        if (newTable) {
+          document.querySelector('.table-responsive').innerHTML = newTable.innerHTML;
+        }
+      });
+  }, 300000); // 5 minutes
+});
+</script>
+{% endblock %}

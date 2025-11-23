@@ -1,0 +1,873 @@
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% block title %}New Consultation - Mediclinic Management System{% endblock %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css" rel="stylesheet" />
+
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-clipboard2-plus me-2"></i>New Consultation</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'consultation_list'%}">Consultations</a></li>
+            <li class="breadcrumb-item active">New Consultation</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <form method="post" id="consultation-form" novalidate>
+                {% csrf_token %}
+                
+                <!-- Patient Search Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0"><i class="bi bi-search me-2"></i>Patient Search</h5>
+                            <a href="{% url 'consultation_list'%}" class="btn btn-outline-light" style="color:grey;">
+                                <i class="bi bi-arrow-left me-2"></i>Back to Consultations
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <label for="patient-search" class="form-label">
+                                Search Patient <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="text" 
+                                       class="form-control {% if not appointment_form.patient.value %}is-invalid{% endif %}" 
+                                       id="patient-search" 
+                                       placeholder="Search by name, ID or phone number..."
+                                       autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" id="clear-search">
+                                    <i class="bi bi-x-lg"></i> Clear
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">Start typing to search for patients (minimum 2 characters)</small>
+                            {% if not appointment_form.patient.value %}
+                                <div class="invalid-feedback d-block">
+                                    Please select a patient
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div id="loading-indicator" class="text-center my-3" style="display: none;">
+                            <div class="spinner-border text-clinic-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 mb-0">Searching patients...</p>
+                        </div>
+                        
+                        <div id="patient-results" class="mt-3"></div>
+                        
+                        <!-- Selected Patient Info -->
+                        <div id="selected-patient-info" class="card mt-3 border-clinic-primary" style="display: {% if appointment_form.patient.value %}block{% else %}none{% endif %};">
+                            <div class="card-header bg-clinic-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="bi bi-person-check me-2"></i>Selected Patient</h6>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="change-patient">
+                                        <i class="bi bi-arrow-repeat me-1"></i>Change Patient
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="patient-detail"><strong><i class="bi bi-person me-1"></i> Name:</strong> <span id="patient-name">{% if selected_patient %}{{ selected_patient.full_name }}{% endif %}</span></p>
+                                        <p class="patient-detail"><strong><i class="bi bi-credit-card me-1"></i> ID Number:</strong> <span id="patient-id-number">{% if selected_patient %}{{ selected_patient.id_number }}{% endif %}</span></p>
+                                        <p class="patient-detail"><strong><i class="bi bi-calendar3 me-1"></i> Date of Birth:</strong> <span id="patient-dob">{% if selected_patient %}{{ selected_patient.date_of_birth|date:"Y-m-d" }}{% endif %}</span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="patient-detail"><strong><i class="bi bi-gender-ambiguous me-1"></i> Gender:</strong> <span id="patient-gender">{% if selected_patient %}{{ selected_patient.get_gender_display }}{% endif %}</span></p>
+                                        <p class="patient-detail"><strong><i class="bi bi-telephone me-1"></i> Phone:</strong> <span id="patient-phone">{% if selected_patient %}{{ selected_patient.phone_number }}{% endif %}</span></p>
+                                    </div>
+                                </div>
+                                <!-- Hidden patient field -->
+                                {{ appointment_form.patient }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Appointment Details Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <h5 class="card-title mb-0"><i class="bi bi-calendar2-plus me-2"></i>Appointment Details</h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ appointment_form.doctor.id_for_label }}" class="form-label">
+                                        Doctor <span class="text-danger">*</span>
+                                    </label>
+                                    {{ appointment_form.doctor }}
+                                    {% if appointment_form.doctor.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ appointment_form.doctor.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ appointment_form.scheduled_time.id_for_label }}" class="form-label">
+                                        Appointment Time <span class="text-danger">*</span>
+                                    </label>
+                                    {{ appointment_form.scheduled_time }}
+                                    {% if appointment_form.scheduled_time.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ appointment_form.scheduled_time.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ appointment_form.reason.id_for_label }}" class="form-label">
+                                        Chief Complaint <span class="text-danger">*</span>
+                                    </label>
+                                    {{ appointment_form.reason }}
+                                    {% if appointment_form.reason.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ appointment_form.reason.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ appointment_form.symptoms.id_for_label }}" class="form-label">
+                                        History of Presenting Illness (HPI) <span class="text-danger">*</span>
+                                    </label>
+                                    {{ appointment_form.symptoms }}
+                                    {% if appointment_form.symptoms.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ appointment_form.symptoms.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Consultation Details Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <h5 class="card-title mb-0"><i class="bi bi-clipboard2-pulse me-2"></i>Consultation Details</h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ consultation_form.diagnosis.id_for_label }}" class="form-label">
+                                On Examination <span class="text-danger">*</span>
+                            </label>
+                            {{ consultation_form.diagnosis }}
+                            {% if consultation_form.diagnosis.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ consultation_form.diagnosis.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ consultation_form.diseases.id_for_label }}" class="form-label">
+                                        Diagnosis <span class="text-danger">*</span>
+                                    </label>
+                                    {{ consultation_form.diseases }}
+                                    {% if consultation_form.diseases.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ consultation_form.diseases.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ consultation_form.notes.id_for_label }}" class="form-label">
+                                        Investigations/Lab Orders
+                                    </label>
+                                    {{ consultation_form.notes }}
+                                    {% if consultation_form.notes.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ consultation_form.notes.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ consultation_form.follow_up_date.id_for_label }}" class="form-label">
+                                        Follow-up Date
+                                    </label>
+                                    {{ consultation_form.follow_up_date }}
+                                    {% if consultation_form.follow_up_date.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ consultation_form.follow_up_date.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ consultation_form.follow_up_notes.id_for_label }}" class="form-label">
+                                        Follow-up Notes
+                                    </label>
+                                    {{ consultation_form.follow_up_notes }}
+                                    {% if consultation_form.follow_up_notes.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ consultation_form.follow_up_notes.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prescriptions Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0"><i class="bi bi-prescription2 me-2"></i>Prescriptions</h5>
+                            <button type="button" class="btn btn-sm btn-outline-light" style="color:grey;" id="add-prescription">
+                                <i class="bi bi-plus-circle me-1"></i>Add Prescription
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        {{ prescription_formset.management_form }}
+                        
+                        <div id="prescription-container">
+                            {% for prescription_form in prescription_formset %}
+                            <div class="card mb-3 border-clinic-primary prescription-item">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-11">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Medicine <span class="text-danger">*</span></label>
+                                                        {{ prescription_form.medicine }}
+                                                        {% if prescription_form.medicine.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ prescription_form.medicine.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Dosage <span class="text-danger">*</span></label>
+                                                        {{ prescription_form.dosage }}
+                                                        {% if prescription_form.dosage.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ prescription_form.dosage.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Duration <span class="text-danger">*</span></label>
+                                                        {{ prescription_form.duration }}
+                                                        {% if prescription_form.duration.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ prescription_form.duration.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-8">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Instructions <span class="text-danger">*</span></label>
+                                                        {{ prescription_form.instructions }}
+                                                        {% if prescription_form.instructions.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ prescription_form.instructions.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                                                        {{ prescription_form.quantity }}
+                                                        {% if prescription_form.quantity.errors %}
+                                                            <div class="invalid-feedback d-block">
+                                                                {{ prescription_form.quantity.errors.0 }}
+                                                            </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% for hidden in prescription_form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+                                        </div>
+                                        <div class="col-1 text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-danger delete-prescription">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div id="empty-prescription-template" class="d-none">
+                            <div class="card mb-3 border-clinic-primary prescription-item">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-11">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Medicine <span class="text-danger">*</span></label>
+                                                        <select name="prescriptions-__prefix__-medicine" class="form-control" required>
+                                                            <option value="" selected>---------</option>
+                                                            {% for medicine in medicines %}
+                                                            <option value="{{ medicine.id }}">{{ medicine.name }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Dosage <span class="text-danger">*</span></label>
+                                                        <input type="text" name="prescriptions-__prefix__-dosage" class="form-control" required placeholder="e.g., 500mg twice daily">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Duration <span class="text-danger">*</span></label>
+                                                        <input type="text" name="prescriptions-__prefix__-duration" class="form-control" required placeholder="e.g., 7 days">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-8">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Instructions <span class="text-danger">*</span></label>
+                                                        <textarea name="prescriptions-__prefix__-instructions" class="form-control" required rows="2" placeholder="Take with meals"></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Quantity <span class="text-danger">*</span></label>
+                                                        <input type="number" name="prescriptions-__prefix__-quantity" value="1" min="1" class="form-control" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <input type="hidden" name="prescriptions-__prefix__-id" id="id_prescriptions-__prefix__-id">
+                                            <input type="hidden" name="prescriptions-__prefix__-DELETE" id="id_prescriptions-__prefix__-DELETE">
+                                        </div>
+                                        <div class="col-1 text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-danger delete-prescription">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="reset" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                    </button>
+                    <button type="submit" class="btn btn-clinic">
+                        <i class="bi bi-save me-1"></i>Save Consultation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Form styling enhancements */
+    .form-control, .form-select {
+        border-radius: 0.375rem;
+        border: 1px solid #ced4da;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--clinic-primary);
+        box-shadow: 0 0 0 0.25rem rgba(26, 140, 255, 0.25);
+    }
+    
+    .is-invalid {
+        border-color: #dc3545;
+    }
+    
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.875em;
+    }
+    
+    .datetime-frozen {
+        background-color: #f8f9fa !important;
+        color: #6c757d !important;
+        cursor: not-allowed !important;
+        opacity: 0.65;
+    }
+    
+    .patient-card {
+        border-left: 4px solid var(--clinic-primary);
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .patient-card:hover {
+        background-color: var(--clinic-light);
+        transform: translateY(-2px);
+    }
+    
+    .select2-container--bootstrap4 .select2-selection--single,
+    .select2-container--bootstrap4 .select2-selection--multiple {
+        height: calc(1.5em + 0.75rem + 2px);
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #ced4da;
+    }
+    
+    .select2-container--bootstrap4 .select2-selection--single:focus,
+    .select2-container--bootstrap4 .select2-selection--multiple:focus {
+        border-color: var(--clinic-primary);
+        box-shadow: 0 0 0 0.2rem rgba(26, 111, 191, 0.25);
+    }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  // Enhanced patient search and selection functionality
+$(document).ready(function() {
+    // Initialize Select2 for dropdowns
+    $('.select2').select2({
+        theme: 'bootstrap4',
+        width: '100%'
+    });
+
+    $('.select2-multiple').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        closeOnSelect: false
+    });
+    
+    // Patient search functionality
+    let searchTimeout;
+    const patientSearch = $('#patient-search');
+    const patientIdField = $('#id_patient'); // Hidden patient field
+    
+    patientSearch.on('keyup', function() {
+        clearTimeout(searchTimeout);
+        const query = $(this).val().trim();
+        
+        if (query.length >= 2) {
+            $('#loading-indicator').show();
+            $('#patient-results').empty();
+            
+            searchTimeout = setTimeout(function() {
+                $.ajax({
+                    url: '{% url "patient_search_ajax" %}',
+                    data: {
+                        'q': query
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        $('#loading-indicator').hide();
+                        if (data.results && data.results.length > 0) {
+                            displayPatientResults(data.results);
+                        } else {
+                            $('#patient-results').html(`
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-1"></i> No patients found matching "${query}"
+                                </div>
+                            `);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        $('#loading-indicator').hide();
+                        $('#patient-results').html(`
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle me-1"></i> 
+                                Error searching patients. Please try again.
+                            </div>
+                        `);
+                        console.error('Patient search error:', error);
+                    }
+                });
+            }, 350);  // Debounce time
+        } else {
+            $('#patient-results').empty();
+            // Clear patient selection if search is cleared
+            if (query.length === 0) {
+                clearPatientSelection();
+            }
+        }
+    });
+    
+    // Clear search
+    $('#clear-search').click(function() {
+        patientSearch.val('').trigger('focus');
+        $('#patient-results').empty();
+        clearPatientSelection();
+    });
+    
+    // Display patient search results
+    function displayPatientResults(results) {
+        const resultsDiv = $('#patient-results');
+        resultsDiv.empty();
+        
+        const list = $('<div class="list-group"></div>');
+        
+        results.forEach(function(patient) {
+            // Extract ID number from the text if needed
+            const idNumber = patient.text.match(/ID: ([^)]+)/)?.[1] || 'N/A';
+            
+            const item = $(`
+                <div class="list-group-item patient-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${patient.text.split(' (ID:')[0]}</h6>
+                            <small class="text-muted">
+                                <i class="bi bi-credit-card me-1"></i> ${idNumber} | 
+                                <i class="bi bi-calendar3 me-1"></i> ${patient.dob} | 
+                                <i class="bi bi-telephone me-1"></i> ${patient.phone || 'N/A'}
+                            </small>
+                        </div>
+                        <button class="btn btn-sm btn-clinic-primary select-patient" 
+                                data-patient-id="${patient.id}"
+                                data-patient-name="${patient.text.split(' (ID:')[0]}"
+                                data-patient-idnumber="${idNumber}"
+                                data-patient-dob="${patient.dob}"
+                                data-patient-gender="${patient.gender}"
+                                data-patient-phone="${patient.phone || 'N/A'}">
+                            <i class="bi bi-check me-1"></i> Select
+                        </button>
+                    </div>
+                </div>
+            `);
+            list.append(item);
+        });
+        
+        resultsDiv.append(list);
+    }
+    
+    // Handle patient selection - ENHANCED VERSION
+    $(document).on('click', '.select-patient', function() {
+        const patientId = $(this).data('patient-id');
+        const patientName = $(this).data('patient-name');
+        const idNumber = $(this).data('patient-idnumber');
+        const dob = $(this).data('patient-dob');
+        const gender = $(this).data('patient-gender');
+        const phone = $(this).data('patient-phone');
+        
+        // AUTOMATICALLY FILL THE APPOINTMENT FORM PATIENT FIELD
+        // Handle different types of patient form fields
+        const patientFormField = $('[name*="patient"]').filter(':not(#patient-search)');
+        
+        // If it's a select dropdown
+        if (patientFormField.is('select')) {
+            // Check if option exists, if not create it
+            if (patientFormField.find(`option[value="${patientId}"]`).length === 0) {
+                patientFormField.append(`<option value="${patientId}">${patientName}</option>`);
+            }
+            patientFormField.val(patientId);
+            
+            // If it's a Select2 dropdown, trigger change
+            if (patientFormField.hasClass('select2-hidden-accessible')) {
+                patientFormField.trigger('change');
+            }
+        } 
+        // If it's a hidden input field
+        else if (patientFormField.is('input[type="hidden"]') || patientFormField.is('input')) {
+            patientFormField.val(patientId);
+        }
+        
+        // Also handle the specific patient field ID if it exists
+        if ($('#id_patient').length) {
+            $('#id_patient').val(patientId);
+            if ($('#id_patient').hasClass('select2-hidden-accessible')) {
+                $('#id_patient').trigger('change');
+            }
+        }
+        
+        // Update the search input to show selected patient name
+        patientSearch.val(patientName);
+        
+        // Remove any validation error styling from both search and form fields
+        patientSearch.removeClass('is-invalid');
+        patientFormField.removeClass('is-invalid');
+        $('.patient-selection-error').remove(); // Remove any error messages
+        $('.invalid-feedback').filter(':contains("patient")').remove();
+        
+        // Display patient info in the selected patient section
+        $('#patient-name').text(patientName);
+        $('#patient-id-number').text(idNumber);
+        $('#patient-dob').text(dob);
+        $('#patient-gender').text(gender);
+        $('#patient-phone').text(phone);
+        
+        // Show the patient info section with animation
+        $('#selected-patient-info').slideDown(300);
+        
+        // Clear the search results
+        $('#patient-results').empty();
+        
+        // Show success message
+        showAlert('success', `Patient "${patientName}" selected successfully!`);
+        
+        // Trigger form validation update
+        patientFormField.trigger('blur');
+        
+        // Focus on the next field for better UX (doctor selection)
+        setTimeout(function() {
+            $('#id_doctor').select2('open');
+        }, 500);
+        
+        // Trigger custom event for other parts of the application
+        $(document).trigger('patientSelected', {
+            id: patientId,
+            name: patientName,
+            idNumber: idNumber,
+            dob: dob,
+            gender: gender,
+            phone: phone
+        });
+    });
+    
+    // Change patient button - ENHANCED VERSION
+    $('#change-patient').click(function() {
+        clearPatientSelection();
+        patientSearch.trigger('focus');
+    });
+    
+    // Function to clear patient selection
+    function clearPatientSelection() {
+        // Clear all patient-related form fields
+        const patientFormField = $('[name*="patient"]').filter(':not(#patient-search)');
+        patientFormField.val('');
+        
+        // Clear the specific patient field ID if it exists
+        if ($('#id_patient').length) {
+            $('#id_patient').val('');
+        }
+        
+        // If Select2 is used, trigger change
+        if (patientFormField.hasClass('select2-hidden-accessible')) {
+            patientFormField.trigger('change');
+        }
+        
+        // Clear the search input
+        patientSearch.val('');
+        
+        // Hide the patient info section
+        $('#selected-patient-info').slideUp(300);
+        
+        // Clear displayed patient information
+        $('#patient-name').text('');
+        $('#patient-id-number').text('');
+        $('#patient-dob').text('');
+        $('#patient-gender').text('');
+        $('#patient-phone').text('');
+        
+        // Remove any validation styling
+        patientSearch.removeClass('is-invalid');
+        patientFormField.removeClass('is-invalid');
+        $('.patient-selection-error').remove();
+        
+        // Trigger custom event
+        $(document).trigger('patientCleared');
+    }
+    
+    // Auto-select patient if only one result and user presses Enter
+    patientSearch.on('keypress', function(e) {
+        if (e.which === 13) { // Enter key
+            const patientCards = $('.select-patient');
+            if (patientCards.length === 1) {
+                e.preventDefault();
+                patientCards.first().click();
+            }
+        }
+    });
+    
+    // Handle prescription management
+    let prescriptionFormCount = {{ prescription_formset.total_form_count }};
+    const maxNumForms = {{ prescription_formset.max_num }};
+    
+    $('#add-prescription').click(function(e) {
+        e.preventDefault();
+        
+        if (prescriptionFormCount < maxNumForms) {
+            const template = $('#empty-prescription-template').html();
+            const newForm = template.replace(/__prefix__/g, prescriptionFormCount);
+            $('#prescription-container').append(newForm);
+            
+            // Initialize Select2 for the new medicine field
+            $('#id_prescriptions-' + prescriptionFormCount + '-medicine').select2({
+                theme: 'bootstrap4',
+                width: '100%'
+            });
+            
+            // Update form count
+            $('#id_prescriptions-TOTAL_FORMS').val(++prescriptionFormCount);
+        } else {
+            showAlert('warning', 'Maximum number of prescriptions reached (' + maxNumForms + ')');
+        }
+    });
+    
+    // Handle removing prescriptions
+    $(document).on('click', '.delete-prescription', function(e) {
+        e.preventDefault();
+        
+        const prescriptionItem = $(this).closest('.prescription-item');
+        
+        // If this is a new form, just remove it
+        if (prescriptionItem.find('input[name$="-id"]').val() === '') {
+            prescriptionItem.remove();
+            prescriptionFormCount--;
+            $('#id_prescriptions-TOTAL_FORMS').val(prescriptionFormCount);
+        } else {
+            // If this is an existing form, mark it for deletion
+            prescriptionItem.find('input[name$="-DELETE"]').val('on');
+            prescriptionItem.hide();
+        }
+    });
+    
+    // Enhanced form submission handling
+    $('#consultation-form').on('submit', function(e) {
+        // Find the patient form field
+        const patientFormField = $('[name*="patient"]').filter(':not(#patient-search)');
+        const patientFieldValue = patientFormField.val() || $('#id_patient').val();
+        
+        // Check if patient is selected
+        if (!patientFieldValue) {
+            e.preventDefault();
+            
+            // Add error styling to both search and form fields
+            patientSearch.addClass('is-invalid');
+            patientFormField.addClass('is-invalid');
+            
+            // Show error message
+            showAlert('danger', 'Please select a patient before submitting the consultation.');
+            
+            // Add inline error message if not exists
+            if (!$('.patient-selection-error').length) {
+                patientSearch.after('<div class="invalid-feedback d-block patient-selection-error">Please select a patient</div>');
+            }
+            
+            // Scroll to patient section and highlight it
+            $('html, body').animate({
+                scrollTop: patientSearch.offset().top - 100
+            }, 300);
+            
+            // Focus on search field
+            patientSearch.focus();
+            
+            return false;
+        }
+        
+        // Additional validation can be added here
+        return true;
+    });
+    
+    // Show alert message function
+    function showAlert(type, message) {
+        const alert = $(`
+            <div class="alert alert-${type} alert-dismissible fade show">
+                <i class="bi ${type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `);
+        $('#system-messages').append(alert);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(function() {
+            alert.alert('close');
+        }, 5000);
+    }
+    
+    // Set current datetime for scheduled_time if empty
+    const scheduledTimeField = document.getElementById('{{ appointment_form.scheduled_time.id_for_label }}');
+    if (scheduledTimeField && !scheduledTimeField.value) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        scheduledTimeField.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        scheduledTimeField.readOnly = true;
+        scheduledTimeField.classList.add('datetime-frozen');
+    }
+
+    // Set default follow-up date (7 days from now) if empty
+    const followUpField = document.getElementById('{{ consultation_form.follow_up_date.id_for_label }}');
+    if (followUpField && !followUpField.value) {
+        const now = new Date();
+        const followUpDate = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
+        const year = followUpDate.getFullYear();
+        const month = String(followUpDate.getMonth() + 1).padStart(2, '0');
+        const day = String(followUpDate.getDate()).padStart(2, '0');
+        
+        followUpField.value = `${year}-${month}-${day}`;
+    }
+    
+    // Initialize patient selection on page load if there's already a selected patient
+    const patientFormField = $('[name*="patient"]').filter(':not(#patient-search)');
+    if (patientFormField.val() || $('#id_patient').val()) {
+        $('#selected-patient-info').show();
+    }
+    
+    // Monitor patient form field changes (in case it's changed by other means)
+    patientFormField.on('change', function() {
+        const selectedValue = $(this).val();
+        if (selectedValue) {
+            // Patient selected by other means, show the info section
+            $('#selected-patient-info').show();
+        } else {
+            // Patient deselected, hide the info section
+            $('#selected-patient-info').hide();
+        }
+    });
+});
+</script>
+{% endblock %}

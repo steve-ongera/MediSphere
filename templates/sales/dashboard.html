@@ -1,0 +1,604 @@
+{% extends "base/base.html" %}
+{% load humanize %}
+
+{% block title %}Sales Analytics Dashboard - Coca-Cola ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0" style="color: #F40009;">
+                    <i class="fas fa-chart-line me-2"></i>Sales Analytics Dashboard
+                </h2>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-calendar-alt me-1"></i> Last 12 Months
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Last 6 Months</a></li>
+                        <li><a class="dropdown-item" href="#">Last 12 Months</a></li>
+                        <li><a class="dropdown-item" href="#">Year to Date</a></li>
+                        <li><a class="dropdown-item" href="#">Custom Range</a></li>
+                    </ul>
+                    <button class="btn btn-danger">
+                        <i class="fas fa-file-export me-1"></i> Export Report
+                    </button>
+                </div>
+            </div>
+            <hr class="mt-2 mb-4" style="border-color: #F40009; opacity: 0.2;">
+        </div>
+    </div>
+
+    <!-- Revenue Trend Card -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-bottom">
+            <h5 class="mb-0" style="color: #F40009;">
+                <i class="fas fa-money-bill-wave me-2"></i>Revenue Trend (Last 12 Months)
+            </h5>
+        </div>
+        <div class="card-body">
+            <canvas id="revenueChart" height="300"></canvas>
+            <div class="mt-3">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center py-2">
+                                <h6 class="mb-0">Total Revenue</h6>
+                                <h4 class="mb-0 text-danger">ksh {{ total_revenue|floatformat:2|intcomma  }}</h4>
+
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center py-2">
+                                <h6 class="mb-0">Avg. Monthly</h6>
+                                <h4 class="mb-0 text-danger">ksh {{ average_monthly_revenue|floatformat:2|intcomma }}</h4>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center py-2">
+                                <h6 class="mb-0">Highest Month</h6>
+                                <h4 class="mb-0 text-danger">ksh {{ max_monthly_revenue|floatformat:2|intcomma }}</h4>
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light border-0">
+                            <div class="card-body text-center py-2">
+                                <h6 class="mb-0">Growth Rate</h6>
+                                <h4 class="mb-0 text-danger">
+                                    {% widthratio monthly_revenue|last monthly_revenue|first 100 as growth %}
+                                    {{ growth|add:"-100" }}%
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Second Row -->
+    <div class="row mb-4">
+        <!-- Top Products Donut -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0" style="color: #F40009;">
+                        <i class="fas fa-star me-2"></i>Top Selling Products (Last 12 Months)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="productsChart" height="300"></canvas>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th class="text-end">Units Sold</th>
+                                    <th class="text-end">Revenue</th>
+                                    <th class="text-end">% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in top_products %}
+                                <tr>
+                                    <td>{{ product.product_variant__name }} ({{ product.product_variant__size }})</td>
+                                    <td class="text-end">{{ product.total_sold|intcomma }}</td>
+                                    <td class="text-end">ksh{{ product.total_revenue|floatformat:2|intcomma }}</td>
+                                    <td class="text-end">
+                                        {% widthratio product.total_revenue top_products.0.total_revenue 100 as percentage %}
+                                        {{ percentage }}%
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Product Performance Line -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0" style="color: #F40009;">
+                        <i class="fas fa-chart-line me-2"></i>Product Performance (Last 6 Months)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="performanceChart" height="300"></canvas>
+                    <div class="mt-3">
+                        <div class="row">
+                            {% for product, data in product_performance.items %}
+                            <div class="col-md-4 mb-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="legend-color me-2" style="background-color: {{ chart_colors|random }}; width: 15px; height: 15px;"></div>
+                                    <small>{{ product }}</small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Third Row -->
+    <div class="row mb-4">
+        <!-- Top Customers Bar -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0" style="color: #F40009;">
+                        <i class="fas fa-users me-2"></i>Top Customers by Revenue (Last 12 Months)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="customersChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0" style="color: #F40009;">
+                        <i class="fas fa-tachometer-alt me-2"></i>Quick Stats
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-3">Sales Overview</h6>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <div class="card bg-light border-0">
+                                    <div class="card-body text-center py-2">
+                                        <small class="text-muted">Total Orders</small>
+                                        <h4 class="mb-0 text-danger">{{ recent_orders|length }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="card bg-light border-0">
+                                    <div class="card-body text-center py-2">
+                                        <small class="text-muted">Avg. Order Value</small>
+                                        <h4 class="mb-0 text-danger">ksh {{ avg_revenue_per_order|floatformat:2|intcomma }}</h4>
+
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="card bg-light border-0">
+                                    <div class="card-body text-center py-2">
+                                        <small class="text-muted">Overdue Invoices</small>
+                                        <h4 class="mb-0 text-danger">{{ overdue_invoices|length }}</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="card bg-light border-0">
+                                    <div class="card-body text-center py-2">
+                                        <small class="text-muted">Active Products</small>
+                                        <h4 class="mb-0 text-danger">
+                                            {% if product_variant_performance %}
+                                                {{ product_variant_performance|length }}
+                                            {% else %}
+                                                0
+                                            {% endif %}
+                                        </h4>
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-3">Top Customer</h6>
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-danger text-white rounded-circle p-3 me-3">
+                                        <i class="fas fa-crown fa-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="mb-1">{{ top_customers.0.name }}</h5>
+                                        <p class="mb-0 text-muted">
+                                            ksh {{ top_customers.0.total_spent|floatformat:2|intcomma }} from {{ top_customers.0.order_count }} orders
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Tables -->
+    <div class="row">
+        <!-- Recent Orders -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0" style="color: #F40009;">
+                            <i class="fas fa-clipboard-list me-2"></i>Recent Orders
+                        </h5>
+                        <a href="#" class="btn btn-sm btn-outline-secondary">
+                            View All
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th class="text-end">Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td>
+                                        <a href="#" class="fw-bold">
+                                            {{ order.order_number }}
+                                        </a>
+                                    </td>
+                                    <td>{{ order.customer.name }}</td>
+                                    <td>{{ order.order_date|date:"M d" }}</td>
+                                    <td class="text-end">ksh {{ order.total_amount|floatformat:2|intcomma }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if order.status == 'delivered' %}bg-success
+                                            {% elif order.status == 'cancelled' %}bg-secondary
+                                            {% elif order.status == 'processing' or order.status == 'shipped' %}bg-primary
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ order.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Overdue Invoices -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0" style="color: #F40009;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Overdue Invoices
+                        </h5>
+                        <a href="#" class="btn btn-sm btn-outline-secondary">
+                            View All
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Customer</th>
+                                    <th>Due Date</th>
+                                    <th class="text-end">Amount</th>
+                                    <th>Days Overdue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invoice in overdue_invoices %}
+                                <tr>
+                                    <td>
+                                        <a href="#" class="fw-bold">
+                                            {{ invoice.invoice_number }}
+                                        </a>
+                                    </td>
+                                    <td>{{ invoice.sales_order.customer.name }}</td>
+                                    <td>{{ invoice.due_date|date:"M d" }}</td>
+                                    <td class="text-end">ksh {{ invoice.total_amount|floatformat:2|intcomma }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">
+                                            {{ today|timeuntil:invoice.due_date }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        No overdue invoices found
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Colors -->
+<!-- Chart Colors -->
+<!-- Chart Colors -->
+<script>
+    const chart_colors = [
+        '#F40009', // Coca-Cola Red
+        '#FFC72C', // Yellow
+        '#1E90FF', // Dodger Blue
+        '#32CD32', // Lime Green
+        '#FF8C00', // Dark Orange
+        '#9370DB', // Medium Purple
+        '#FF69B4', // Hot Pink
+        '#20B2AA', // Light Sea Green
+        '#FF4500', // Orange Red
+        '#9932CC', // Dark Orchid
+    ];
+</script>
+
+<!-- Chart.js Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Revenue Chart
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    const revenueChart = new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: {{ month_labels|safe }},
+            datasets: [{
+                label: 'Monthly Revenue',
+                data: {{ monthly_revenue|safe }},
+                backgroundColor: 'rgba(244, 0, 9, 0.1)',
+                borderColor: 'rgba(244, 0, 9, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'ksh  ' + context.parsed.y.toLocaleString('en-KE',{
+                                minimumFractionDigits:2,
+                                maximumFractionDigits:2
+                            });
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'ksh  ' + value.toLocaleString('en-KE');
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Products Chart (Donut)
+    const productsCtx = document.getElementById('productsChart').getContext('2d');
+    const productsChart = new Chart(productsCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [
+                {% for product in top_products %}
+                "{{ product.product_variant__name }} ({{ product.product_variant__size }})"{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for product in top_products %}
+                    {{ product.total_revenue }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                backgroundColor: chart_colors.slice(0, {{ top_products|length }}),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            var label = context.label || '';
+                            var value = context.parsed || 0;
+                            var total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            var percentage = Math.round((value / total) * 100);
+                            return label + ': ksh ' + value.toFixed(2) + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+
+    // Product Performance Chart (Line)
+    const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+    
+    // Prepare datasets for product performance
+    const performanceDatasets = [];
+    
+    // Process all product data in a single array to avoid variable redeclaration
+    const productData = [
+        {% for product_name, data_points in product_performance.items %}
+        {
+            name: '{{ product_name }}',
+            points: {{ data_points|safe }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Create datasets from the array (no variable declarations in template loop)
+    productData.forEach((product, index) => {
+        const colorIndex = index % chart_colors.length;
+        performanceDatasets.push({
+            label: product.name,
+            data: product.points,
+            backgroundColor: chart_colors[colorIndex],
+            borderColor: chart_colors[colorIndex],
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 3
+        });
+    });
+    
+    const performanceChart = new Chart(performanceCtx, {
+        type: 'line',
+        data: {
+            labels: {{ performance_months|safe }},
+            datasets: performanceDatasets
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Units Sold'
+                    }
+                }
+            }
+        }
+    });
+
+    // Customers Chart (Bar)
+    const customersCtx = document.getElementById('customersChart').getContext('2d');
+    const customersChart = new Chart(customersCtx, {
+        type: 'bar',
+        data: {
+            labels: [
+                {% for customer in top_customers %}
+                "{{ customer.name }}"{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Revenue',
+                data: [
+                    {% for customer in top_customers %}
+                    {{ customer.total_spent }}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ],
+                backgroundColor: "#F40009",
+                borderWidth: 0,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'ksh  ' + context.parsed.x.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'ksh  ' + value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+    
+
+
+<style>
+    .card {
+        border-radius: 0.5rem;
+    }
+    
+    .badge.bg-danger {
+        background-color: #F40009 !important;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(244, 0, 9, 0.05);
+    }
+    
+    canvas {
+        width: 100% !important;
+        height: 300px !important;
+    }
+</style>
+{% endblock %}

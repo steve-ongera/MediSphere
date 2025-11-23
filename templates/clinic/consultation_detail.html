@@ -1,0 +1,338 @@
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% block title %}Consultation #{{ consultation.id }} - Mediclinic Management System{% endblock %}
+
+{% block content %}
+
+
+<div class="pagetitle">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1><i class="bi bi-file-earmark-medical me-2"></i>Consultation Record</h1>
+            <nav>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Home</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'consultation_list'%}">Consultations</a></li>
+                    <li class="breadcrumb-item active">#{{ consultation.consultation_code }}</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="consultation-code-badge">
+            <span class="badge bg-primary">
+                <i class="bi bi-hash"></i> {{ consultation.consultation_code }}
+            </span>
+        </div>
+    </div>
+</div><!-- End Page Title -->
+
+
+
+
+<section class="section">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Patient Information Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-person-vcard me-2"></i>Patient Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h4>{{ patient.first_name }} {{ patient.last_name }}</h4>
+                            <p class="mb-2">
+                                <span class="badge bg-clinic-light text-dark me-2"><i class="bi bi-credit-card me-1"></i> ID: {{ patient.id_number }}</span>
+                                <span class="badge bg-clinic-light text-dark me-2"><i class="bi bi-calendar3 me-1"></i> DOB: {{ patient.date_of_birth|date:"M d, Y" }}</span>
+                                <span class="badge bg-clinic-light text-dark"><i class="bi bi-gender-ambiguous me-1"></i> {{ patient.get_gender_display }}</span>
+                            </p>
+                            {% if patient.allergies %}
+                            <div class="alert alert-warning p-2 mt-2 mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>Allergies: {{ patient.allergies }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-2"><i class="bi bi-telephone me-2"></i> {{ patient.phone_number }}</p>
+                            {% if patient.email %}
+                            <p class="mb-2"><i class="bi bi-envelope me-2"></i> {{ patient.email }}</p>
+                            {% endif %}
+                            {% if patient.blood_type %}
+                            <p class="mb-0"><i class="bi bi-droplet me-2"></i> Blood Type: {{ patient.blood_type }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Appointment Information -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-calendar2-check me-2"></i>Appointment Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5>{{ appointment.scheduled_time|date:"F d, Y" }} at {{ appointment.scheduled_time|date:"h:i a" }}</h5>
+                            <p class="mb-2"><i class="bi bi-person-badge me-2"></i>Dr. {{ appointment.doctor.last_name }}</p>
+                            <span class="badge bg-{% if appointment.status == 'completed' %}success{% elif appointment.status == 'pending' %}warning{% else %}primary{% endif %} p-2">
+                                {{ appointment.get_status_display }}
+                            </span>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-2"><strong><i class="bi bi-chat-square-text me-2"></i>Reason:</strong> {{ appointment.reason }}</p>
+                            {% if appointment.symptoms %}
+                            <p class="mb-0"><strong><i class="bi bi-clipboard2-pulse me-2"></i>Symptoms:</strong> {{ appointment.symptoms }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consultation Details -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-clipboard2-pulse me-2"></i>Consultation Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6><i class="bi bi-clipboard2-check me-2"></i>Diagnosis</h6>
+                        <div class="p-3 bg-clinic-light rounded">{{ consultation.diagnosis }}</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6><i class="bi bi-heart-pulse me-2"></i>Diseases/Conditions</h6>
+                        {% if consultation.diseases.exists %}
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for disease in consultation.diseases.all %}
+                                    <span class="badge bg-secondary p-2">
+                                        <i class="bi bi-activity me-1"></i>{{ disease.name }}{% if disease.icd_code %} ({{ disease.icd_code }}){% endif %}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No diseases specified</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6><i class="bi bi-journal-text me-2"></i>Clinical Notes</h6>
+                        <div class="p-3 bg-clinic-light rounded">{{ consultation.notes|default:"No clinical notes" }}</div>
+                    </div>
+                    
+                    {% if consultation.follow_up_date %}
+                    <div class="alert alert-info p-3">
+                        <h6><i class="bi bi-calendar2-plus me-2"></i>Follow-up Scheduled</h6>
+                        <p class="mb-2"><strong>Date:</strong> {{ consultation.follow_up_date|date:"F d, Y" }}</p>
+                        {% if consultation.follow_up_notes %}
+                        <p class="mb-0"><strong>Notes:</strong> {{ consultation.follow_up_notes }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Prescriptions -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0"><i class="bi bi-prescription2 me-2"></i>Prescriptions</h5>
+                        <span class="badge bg-white text-clinic-primary">{{ prescriptions.count }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if prescriptions %}
+                        <div class="row g-3">
+                            {% for prescription in prescriptions %}
+                                <div class="col-md-6">
+                                    <div class="card border-clinic-primary p-3 h-100">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="mb-0"><i class="bi bi-capsule me-2"></i>{{ prescription.medicine.name }}</h5>
+                                            {% if prescription.medicine.category %}
+                                                <span class="badge bg-dark">{{ prescription.medicine.category }}</span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="d-flex flex-wrap gap-2 mb-3">
+                                            <span class="badge bg-clinic-primary p-2"><i class="bi bi-droplet-half me-1"></i>Dosage: {{ prescription.dosage }}</span>
+                                            <span class="badge bg-clinic-secondary p-2"><i class="bi bi-clock me-1"></i>Duration: {{ prescription.duration }}</span>
+                                            <span class="badge bg-warning p-2"><i class="bi bi-box-seam me-1"></i>Quantity: {{ prescription.quantity }}</span>
+                                        </div>
+                                        
+                                        {% if prescription.instructions %}
+                                        <div class="alert alert-light p-2 mb-2">
+                                            <i class="bi bi-info-circle text-clinic-primary me-2"></i>{{ prescription.instructions }}
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="text-muted small">
+                                            <i class="bi bi-clock-history me-1"></i> Prescribed on {{ prescription.prescribed_at|date:"M d, Y" }}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-prescription2 text-muted mb-3" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted">No prescriptions issued</h5>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Doctor Information -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-person-heart me-2"></i>Attending Physician</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-clinic-light rounded-circle p-3 me-3">
+                            <i class="bi bi-person-heart text-clinic-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Dr. {{ appointment.doctor.get_full_name }}</h6>
+                            <small class="text-muted">{{ appointment.doctor.specialization|default:"General Practitioner" }}</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="bg-clinic-light rounded-circle p-3 me-3">
+                            <i class="bi bi-card-checklist text-clinic-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">{{ appointment.doctor.license_number|default:"License: N/A" }}</h6>
+                            <small class="text-muted">Medical License</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consultation Timeline -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-clock-history me-2"></i>Consultation Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-point bg-clinic-primary"></div>
+                            <div class="timeline-content">
+                                <small class="text-muted">{{ appointment.created_at|date:"M j, Y H:i" }}</small>
+                                <p class="mb-0">Appointment Booked</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-point bg-clinic-primary"></div>
+                            <div class="timeline-content">
+                                <small class="text-muted">{{ appointment.scheduled_time|date:"M j, Y H:i" }}</small>
+                                <p class="mb-0">Appointment Started</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-point bg-clinic-primary"></div>
+                            <div class="timeline-content">
+                                <small class="text-muted">{{ consultation.created_at|date:"M j, Y H:i" }}</small>
+                                <p class="mb-0">Consultation Recorded</p>
+                            </div>
+                        </div>
+                        {% if consultation.follow_up_date %}
+                        <div class="timeline-item">
+                            <div class="timeline-point bg-clinic-primary"></div>
+                            <div class="timeline-content">
+                                <small class="text-muted">Scheduled: {{ consultation.follow_up_date|date:"M j, Y" }}</small>
+                                <p class="mb-0">Follow-up Scheduled</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-gear me-2"></i>Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'new_consultation' %}" class="btn btn-clinic">
+                            <i class="bi bi-plus-circle me-2"></i> New Consultation
+                        </a>
+                        <button class="btn btn-outline-clinic" onclick="window.print()">
+                            <i class="bi bi-printer me-2"></i> Print Record
+                        </button>
+                        {% if request.user == appointment.doctor or request.user.user_type == 'ADMIN' %}
+                        <a href="#" class="btn btn-outline-secondary">
+                            <i class="bi bi-pencil-square me-2"></i> Edit Consultation
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Timeline styling */
+    .timeline {
+        position: relative;
+        padding-left: 1rem;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-point {
+        position: absolute;
+        left: -1rem;
+        top: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: var(--clinic-primary);
+    }
+    
+    .timeline-content {
+        padding-left: 1rem;
+    }
+    
+    .timeline-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: -0.65rem;
+        top: 12px;
+        bottom: 0;
+        width: 2px;
+        background-color: #e9ecef;
+    }
+
+    /* Print-specific styles */
+    @media print {
+        body {
+            background-color: white;
+            font-size: 12pt;
+        }
+        
+        .container-fluid {
+            padding: 0;
+        }
+        
+        .card {
+            border: none;
+            box-shadow: none;
+        }
+        
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}

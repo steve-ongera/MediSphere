@@ -1,0 +1,384 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Clinical Communication Platform{% endblock %}
+{% block content %}
+
+<style>
+    /* Clinic Blue Theme */
+    :root {
+        --clinic-primary: #1a6fbf;
+        --clinic-primary-light: rgba(26, 111, 191, 0.1);
+        --clinic-secondary: #0d4e8a;
+    }
+    
+    .chat-container {
+        display: flex;
+        height: calc(100vh - 150px);
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .contacts-list {
+        width: 300px;
+        border-right: 1px solid #ddd;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+    }
+    
+    .chat-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chat-header {
+        padding: 15px;
+        background-color: var(--clinic-primary);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .messages-container {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background-color: #e5ddd5;
+        background-image: url('{% static "images/chat-bg.png" %}');
+        background-repeat: repeat;
+    }
+    
+    .message-input {
+        padding: 15px;
+        background-color: #f0f0f0;
+        border-top: 1px solid #ddd;
+    }
+    
+    .contact {
+        padding: 12px 15px;
+        border-bottom: 1px solid #ddd;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .contact:hover, .contact.active {
+        background-color: var(--clinic-primary-light);
+    }
+    
+    .contact-name {
+        font-weight: 500;
+    }
+    
+    .contact-status {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    .message {
+        max-width: 70%;
+        margin-bottom: 10px;
+        padding: 8px 12px;
+        border-radius: 7.5px;
+        position: relative;
+        word-wrap: break-word;
+    }
+    
+    .message.sent {
+        background-color: #dcf8c6;
+        margin-left: auto;
+        margin-right: 0;
+    }
+    
+    .message.received {
+        background-color: white;
+        margin-left: 0;
+        margin-right: auto;
+    }
+    
+    .message-time {
+        font-size: 0.7rem;
+        color: #666;
+        margin-top: 3px;
+        text-align: right;
+    }
+    
+    .patient-card {
+        background-color: white;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    }
+    
+    .call-patient-btn {
+        background-color: var(--clinic-primary);
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
+    .next-patient-btn {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
+    .unread-badge {
+        background-color: var(--clinic-primary);
+        color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        margin-left: auto;
+    }
+</style>
+
+
+
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Clinical Communication</h1>
+        {% if active_patient %}
+        <div class="patient-info">
+            <span class="mr-2">Active Patient: <strong>{{ active_patient.get_full_name }}</strong></span>
+            {% if request.user.userprofile.is_doctor or request.user.userprofile.is_admin %}
+            <button class="call-patient-btn" onclick="callPatient('{{ active_patient.id }}')">
+                <i class="fas fa-bell"></i> Call Patient
+            </button>
+            {% endif %}
+            {% if request.user.userprofile.is_receptionist %}
+            <button class="next-patient-btn" onclick="nextPatient()">
+                <i class="fas fa-user-check"></i> Next Patient
+            </button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Chat Container -->
+    <div class="chat-container">
+        <!-- Contacts List -->
+        <div class="contacts-list">
+            {% for partner in chat_partners %}
+            <div class="contact {% if partner.id == active_partner_id %}active{% endif %}" 
+                 onclick="loadConversation('{{ partner.id }}', '{{ active_patient.id|default:'' }}')">
+                <div class="d-flex align-items-center">
+                    <div class="mr-2">
+                        <i class="fas fa-user-circle fa-2x"></i>
+                    </div>
+                    <div>
+                        <div class="contact-name">{{ partner.get_full_name }}</div>
+                        <div class="contact-status">
+                            {% if partner.userprofile.is_doctor %}Doctor{% endif %}
+                            {% if partner.userprofile.is_admin %}Admin{% endif %}
+                            {% if partner.userprofile.is_receptionist %}Receptionist{% endif %}
+                        </div>
+                    </div>
+                    {% if partner.unread_count > 0 %}
+                    <div class="unread-badge">{{ partner.unread_count }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <div>
+                    {% if other_user %}
+                    <h5 class="mb-0">{{ other_user.get_full_name }}</h5>
+                    <small>
+                        {% if other_user.userprofile.is_doctor %}Doctor{% endif %}
+                        {% if other_user.userprofile.is_admin %}Admin{% endif %}
+                        {% if other_user.userprofile.is_receptionist %}Receptionist{% endif %}
+                    </small>
+                    {% else %}
+                    <h5 style="color:white;" class="mb-0">Select a conversation</h5>
+                    {% endif %}
+                </div>
+                {% if patient %}
+                <div class="patient-badge">
+                    <span class="badge bg-info">Patient: {{ patient.get_full_name }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="messages-container" id="messages-container">
+                {% if messages %}
+                    {% if patient %}
+                    <div class="patient-card">
+                        <h6>Patient Information</h6>
+                        <p><strong>Name:</strong> {{ patient.get_full_name }}</p>
+                        <p><strong>ID:</strong> {{ patient.id_number }}</p>
+                        <p><strong>Age:</strong> {{ patient.age }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% for message in messages %}
+                    <div class="message {% if message.sender == request.user %}sent{% else %}received{% endif %}">
+                        <div class="message-content">{{ message.content }}</div>
+                        <div class="message-time">{{ message.timestamp|date:"M d, Y H:i" }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="color:white;" class="text-center py-5">
+                        <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                        <h5  class="text-muted">Select a conversation to start chatting</h5>
+                    </div>
+                {% endif %}
+            </div>
+            
+            {% if conversation %}
+            <div class="message-input">
+                <form id="message-form">
+                    <input type="hidden" id="conversation-id" value="{{ conversation.id }}">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="message-input" 
+                               placeholder="Type your message here..." autocomplete="off">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-paper-plane"></i> Send
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load conversation when a contact is clicked
+    function loadConversation(userId, patientId = null) {
+        let url = `/communication/conversation/${userId}/`;
+        if (patientId) {
+            url += `?patient_id=${patientId}`;
+        }
+        window.location.href = url;
+    }
+    
+    // Send message
+    document.getElementById('message-form')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const messageInput = document.getElementById('message-input');
+        const conversationId = document.getElementById('conversation-id').value;
+        const message = messageInput.value.trim();
+        
+        if (message) {
+            fetch('/communication/send_message/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    conversation_id: conversationId,
+                    content: message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Append the new message to the chat
+                    const messagesContainer = document.getElementById('messages-container');
+                    const newMessage = document.createElement('div');
+                    newMessage.className = 'message sent';
+                    newMessage.innerHTML = `
+                        <div class="message-content">${data.message.content}</div>
+                        <div class="message-time">${data.message.timestamp}</div>
+                    `;
+                    messagesContainer.appendChild(newMessage);
+                    messageInput.value = '';
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            });
+        }
+    });
+    
+    // Call patient function (for doctors/admins)
+    function callPatient(patientId) {
+        fetch(`/communication/call_patient/${patientId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(`Patient ${data.patient_name} has been called to reception.`);
+            }
+        });
+    }
+    
+    // Next patient function (for receptionists)
+    function nextPatient() {
+        fetch('/communication/next_patient/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.reload();
+            }
+        });
+    }
+    
+    // Poll for new messages if in a conversation
+    {% if conversation %}
+    let lastMessageId = {% if messages %}{{ messages.last.id }}{% else %}0{% endif %};
+    
+    function checkForNewMessages() {
+        fetch(`/communication/get_new_messages/{{ conversation.id }}/${lastMessageId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.messages.length > 0) {
+                    const messagesContainer = document.getElementById('messages-container');
+                    
+                    data.messages.forEach(msg => {
+                        const newMessage = document.createElement('div');
+                        newMessage.className = 'message received';
+                        newMessage.innerHTML = `
+                            <div class="message-content">${msg.content}</div>
+                            <div class="message-time">${msg.timestamp}</div>
+                        `;
+                        messagesContainer.appendChild(newMessage);
+                        lastMessageId = msg.id;
+                    });
+                    
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            });
+    }
+    
+    // Check for new messages every 3 seconds
+    setInterval(checkForNewMessages, 3000);
+    {% endif %}
+    
+    // Auto-scroll to bottom of messages
+    window.onload = function() {
+        const messagesContainer = document.getElementById('messages-container');
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    };
+</script>
+{% endblock %}

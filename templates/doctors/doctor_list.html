@@ -1,0 +1,352 @@
+{% extends 'base/base.html' %}
+
+{% block content %}
+<style>
+    :root {
+        --clinic-primary: #1a6fc9;
+        --clinic-primary-light: #e1f0fa;
+        --clinic-primary-dark: #0d5aa7;
+        --clinic-secondary: #f8f9fa;
+        --clinic-success: #28a745;
+        --clinic-danger: #dc3545;
+        --clinic-warning: #ffc107;
+        --clinic-info: #17a2b8;
+    }
+
+    .profile-image {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #dee2e6;
+    }
+
+    .profile-initials {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, var(--clinic-primary), var(--clinic-primary-dark));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .table-sm td, .table-sm th {
+        font-size: 0.85rem;
+        vertical-align: middle;
+    }
+
+    .doctor-name {
+        font-weight: 600;
+        color: var(--clinic-primary-dark);
+    }
+
+    .doctor-email {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .status-active {
+        background-color: #e1f0fa;
+        color: var(--clinic-primary-dark);
+        border: 1px solid rgba(26, 111, 201, 0.2);
+    }
+
+    .status-inactive {
+        background-color: #fde8e8;
+        color: #842029;
+        border: 1px solid rgba(220, 53, 69, 0.2);
+    }
+
+    .license-valid {
+        background-color: #e1f0fa;
+        color: var(--clinic-primary-dark);
+        border: 1px solid rgba(26, 111, 201, 0.2);
+    }
+
+    .license-expired {
+        background-color: #fff3cd;
+        color: #664d03;
+        border: 1px solid rgba(255, 193, 7, 0.2);
+    }
+
+    .license-unknown {
+        background-color: #e2e3e5;
+        color: #41464b;
+        border: 1px solid rgba(108, 117, 125, 0.2);
+    }
+
+    .btn-action {
+        margin-right: 0.25rem;
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        transition: all 0.2s;
+    }
+
+    .btn-view {
+        color: var(--clinic-primary);
+        background-color: rgba(26, 111, 201, 0.1);
+    }
+
+    .btn-view:hover {
+        background-color: rgba(26, 111, 201, 0.2);
+    }
+
+    .btn-edit {
+        color: var(--clinic-warning);
+        background-color: rgba(255, 193, 7, 0.1);
+    }
+
+    .btn-edit:hover {
+        background-color: rgba(255, 193, 7, 0.2);
+    }
+
+    .btn-delete {
+        color: var(--clinic-danger);
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+
+    .btn-delete:hover {
+        background-color: rgba(220, 53, 69, 0.2);
+    }
+
+    .results-summary {
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        color: #6c757d;
+    }
+
+    .card-header {
+        background-color: var(--clinic-primary);
+        color: white;
+        font-weight: 600;
+    }
+
+    .btn-primary {
+        background-color: var(--clinic-primary);
+        border-color: var(--clinic-primary);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--clinic-primary-dark);
+        border-color: var(--clinic-primary-dark);
+    }
+
+    .btn-outline-primary {
+        color: var(--clinic-primary);
+        border-color: var(--clinic-primary);
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--clinic-primary);
+        color: white;
+    }
+
+    .table-light {
+        background-color: var(--clinic-primary-light);
+    }
+
+    .page-link {
+        color: var(--clinic-primary);
+    }
+
+    .page-item.active .page-link {
+        background-color: var(--clinic-primary);
+        border-color: var(--clinic-primary);
+    }
+
+    .empty-state-icon {
+        color: var(--clinic-primary-light);
+        font-size: 3rem;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+        <h3 class="mb-0" style="color: var(--clinic-primary-dark);">
+            <i class="fas fa-user-md me-2"></i>Doctors Management
+        </h3>
+        <a href="{% url 'doctor_add' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Add New Doctor
+        </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header">
+            <i class="fas fa-filter me-2"></i>Search & Filter
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label for="search" class="form-label">Search</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="search" name="search" value="{{ search_query }}" placeholder="Name, license, or email">
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="specialization" class="form-label">Specialization</label>
+                    <select class="form-select" id="specialization" name="specialization">
+                        <option value="">All Specializations</option>
+                        {% for code, name in specializations %}
+                            <option value="{{ code }}" {% if code == specialization_filter %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter me-1"></i> Filter
+                    </button>
+                    <a href="{% url 'doctor_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="results-summary">
+        <i class="fas fa-info-circle me-1" style="color: var(--clinic-primary);"></i>
+        Showing {{ page_obj.start_index }} - {{ page_obj.end_index }} of {{ total_doctors }} doctors
+    </div>
+
+    <!-- Doctors Table -->
+    <div class="card border-primary">
+        <div class="card-body p-0">
+            {% if page_obj.object_list %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">Photo</th>
+                                <th>Name</th>
+                                <th>Specialization</th>
+                                <th>License #</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th>License Status</th>
+                                <th style="width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doctor in page_obj.object_list %}
+                                <tr>
+                                    <td>
+                                        {% if doctor.profile_picture %}
+                                            <img src="{{ doctor.profile_picture.url }}" alt="{{ doctor.full_name }}" class="profile-image">
+                                        {% else %}
+                                            <div class="profile-initials">{{ doctor.first_name.0 }}{{ doctor.last_name.0 }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="doctor-name">{{ doctor.full_name }}</div>
+                                        <div class="doctor-email">{{ doctor.email|default:"-" }}</div>
+                                    </td>
+                                    <td>{{ doctor.get_specialization_display }}</td>
+                                    <td><code>{{ doctor.license_number }}</code></td>
+                                    <td>{{ doctor.phone_number }}</td>
+                                    <td>
+                                        <span class="status-badge {% if doctor.is_active %}status-active{% else %}status-inactive{% endif %}">
+                                            {% if doctor.is_active %}
+                                                <i class="fas fa-check-circle me-1"></i>Active
+                                            {% else %}
+                                                <i class="fas fa-times-circle me-1"></i>Inactive
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge 
+                                            {% if doctor.license_status == 'Valid' %}license-valid
+                                            {% elif doctor.license_status == 'Expired' %}license-expired
+                                            {% else %}license-unknown{% endif %}">
+                                            {% if doctor.license_status == 'Valid' %}
+                                                <i class="fas fa-check-circle me-1"></i>Valid
+                                            {% elif doctor.license_status == 'Expired' %}
+                                                <i class="fas fa-exclamation-triangle me-1"></i>Expired
+                                            {% else %}
+                                                <i class="fas fa-question-circle me-1"></i>Unknown
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        <a href="{% url 'doctor_detail' doctor.pk %}" class="btn-action btn-view" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'doctor_edit' doctor.pk %}" class="btn-action btn-edit" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{% url 'doctor_delete' doctor.pk %}" class="btn-action btn-delete" title="Delete" onclick="return confirm('Are you sure you want to delete this doctor?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Pagination" class="p-3 border-top">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if specialization_filter %}&specialization={{ specialization_filter }}{% endif %}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if specialization_filter %}&specialization={{ specialization_filter }}{% endif %}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if specialization_filter %}&specialization={{ specialization_filter }}{% endif %}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if specialization_filter %}&specialization={{ specialization_filter }}{% endif %}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="p-4 text-center">
+                    <div class="empty-state-icon mb-3">
+                        <i class="fas fa-user-md"></i>
+                    </div>
+                    <h5 class="text-muted mb-3">No doctors found</h5>
+                    <a href="{% url 'doctor_add' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i> Add New Doctor
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

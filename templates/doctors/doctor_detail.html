@@ -1,0 +1,455 @@
+{% extends 'base/base.html' %}
+{% block content %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --clinic-blue: #1a73e8;
+            --clinic-blue-light: #e8f0fe;
+            --clinic-blue-dark: #0d47a1;
+            --warning-orange: #ff9800;
+            --danger-red: #f44336;
+            --success-green: #4caf50;
+        }
+        
+        .page-header {
+            color: var(--clinic-blue);
+        }
+        
+        .header-divider {
+            border-color: var(--clinic-blue);
+            opacity: 0.2;
+        }
+        
+        .btn-primary {
+            background-color: var(--clinic-blue);
+            border-color: var(--clinic-blue);
+        }
+        
+        .btn-outline-primary {
+            color: var(--clinic-blue);
+            border-color: var(--clinic-blue);
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: var(--clinic-blue);
+            color: white;
+        }
+        
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            border: none;
+        }
+        
+        .card-header {
+            background-color: var(--clinic-blue);
+            color: white;
+            border-radius: 8px 8px 0 0 !important;
+        }
+        
+        .profile-img {
+            width: 100px; 
+            height: 100px; 
+            object-fit: cover;
+            border: 3px solid var(--clinic-blue-light);
+        }
+        
+        .initials {
+            width: 100px; 
+            height: 100px; 
+            font-size: 2rem;
+            background-color: var(--clinic-blue);
+            color: white;
+        }
+        
+        .doc-img {
+            max-width: 100%;
+            height: auto;
+            max-height: 200px;
+            border: 1px solid var(--clinic-blue-light);
+        }
+        
+        .nav-tabs {
+            border-bottom: 2px solid var(--clinic-blue-light);
+        }
+        
+        .nav-tabs .nav-link {
+            color: #495057;
+            border: none;
+            padding: 12px 20px;
+            font-weight: 500;
+        }
+        
+        .nav-tabs .nav-link:hover {
+            border: none;
+            color: var(--clinic-blue);
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--clinic-blue);
+            font-weight: 600;
+            border-bottom: 3px solid var(--clinic-blue);
+            background-color: transparent;
+        }
+        
+        .list-group-item {
+            border-left: none;
+            border-right: none;
+            padding: 12px 20px;
+        }
+        
+        .list-group-item:first-child {
+            border-top: none;
+        }
+        
+        .list-group-item:last-child {
+            border-bottom: none;
+        }
+        
+        .badge-primary {
+            background-color: var(--clinic-blue);
+        }
+        
+        .badge-success {
+            background-color: var(--success-green);
+        }
+        
+        .badge-warning {
+            background-color: var(--warning-orange);
+        }
+        
+        .badge-secondary {
+            background-color: #6c757d;
+        }
+        
+        .text-primary {
+            color: var(--clinic-blue) !important;
+        }
+    </style>
+
+    <div class="container-fluid">
+        <!-- Page Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2 class="mb-0 page-header">
+                        <i class="fas fa-user-md me-2"></i>Doctor Profile
+                    </h2>
+                    <div>
+                        <a href="{% url 'doctor_edit' doctor.pk %}" class="btn btn-sm btn-primary me-2">
+                            <i class="fas fa-edit me-1"></i> Edit
+                        </a>
+                        <a href="{% url 'doctor_list' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-arrow-left me-1"></i> Back
+                        </a>
+                    </div>
+                </div>
+                <hr class="mt-2 mb-4 header-divider">
+            </div>
+        </div>
+
+        <!-- Profile Summary -->
+        <div class="card mb-4">
+            <div class="card-body d-flex align-items-center">
+                {% if doctor.profile_picture %}
+                    <img src="{{ doctor.profile_picture.url }}" alt="{{ doctor.full_name }}" 
+                         class="rounded-circle me-4 profile-img">
+                {% else %}
+                    <div class="rounded-circle d-flex justify-content-center align-items-center me-4 initials">
+                        {{ doctor.first_name.0 }}{{ doctor.last_name.0 }}
+                    </div>
+                {% endif %}
+                <div>
+                    <h3 class="mb-1">Dr. {{ doctor.full_name }}</h3>
+                    <p class="mb-2"><span class="badge bg-primary">{{ doctor.get_specialization_display }}</span></p>
+                    <span class="badge {% if doctor.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                        <i class="fas {% if doctor.is_active %}fa-check-circle{% else %}fa-times-circle{% endif %} me-1"></i>
+                        {% if doctor.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs mb-4" id="doctorTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab">
+                    <i class="fas fa-user me-1"></i> Personal
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact" type="button" role="tab">
+                    <i class="fas fa-address-book me-1"></i> Contact
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="professional-tab" data-bs-toggle="tab" data-bs-target="#professional" type="button" role="tab">
+                    <i class="fas fa-briefcase me-1"></i> Professional
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab">
+                    <i class="fas fa-file-contract me-1"></i> Documents
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="doctorTabsContent">
+            <!-- Personal Tab -->
+            <div class="tab-pane fade show active" id="personal" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-id-card me-2"></i> Basic Info
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-venus-mars text-primary me-2"></i> Gender</span>
+                                        <span class="fw-bold">{{ doctor.get_gender_display }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-birthday-cake text-primary me-2"></i> Date of Birth</span>
+                                        <span class="fw-bold">{{ doctor.date_of_birth }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-calendar-alt text-primary me-2"></i> Age</span>
+                                        <span class="fw-bold">{{ doctor.age }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-id-card text-primary me-2"></i> ID Number</span>
+                                        <span class="fw-bold">{{ doctor.id_number }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-tint text-primary me-2"></i> Blood Type</span>
+                                        <span class="fw-bold">{{ doctor.get_blood_type_display|default:"-" }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-map-marker-alt me-2"></i> Address
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <p><i class="fas fa-home text-primary me-2"></i><strong>Address:</strong><br>
+                                        {{ doctor.address|default:"-" }}</p>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-city text-primary me-2"></i> City</span>
+                                        <span class="fw-bold">{{ doctor.city|default:"-" }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-flag text-primary me-2"></i> State</span>
+                                        <span class="fw-bold">{{ doctor.state|default:"-" }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-globe text-primary me-2"></i> Country</span>
+                                        <span class="fw-bold">{{ doctor.country|default:"-" }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-mail-bulk text-primary me-2"></i> Postal Code</span>
+                                        <span class="fw-bold">{{ doctor.postal_code|default:"-" }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Tab -->
+            <div class="tab-pane fade" id="contact" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-address-book me-2"></i> Contact Information
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span><i class="fas fa-phone text-primary me-2"></i> Phone</span>
+                                <span class="fw-bold">{{ doctor.phone_number }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span><i class="fas fa-phone-alt text-primary me-2"></i> Alternate Phone</span>
+                                <span class="fw-bold">{{ doctor.alternate_phone|default:"-" }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span><i class="fas fa-envelope text-primary me-2"></i> Email</span>
+                                <span class="fw-bold">{{ doctor.email|default:"-" }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span><i class="fas fa-user-shield text-primary me-2"></i> Emergency Contact</span>
+                                <span class="fw-bold">{{ doctor.emergency_contact|default:"-" }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                <span><i class="fas fa-phone-square text-primary me-2"></i> Emergency Phone</span>
+                                <span class="fw-bold">{{ doctor.emergency_phone|default:"-" }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Professional Tab -->
+            <div class="tab-pane fade" id="professional" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-briefcase me-2"></i> Professional Info
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-stethoscope text-primary me-2"></i> Specialization</span>
+                                        <span class="fw-bold">{{ doctor.get_specialization_display }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-certificate text-primary me-2"></i> License Number</span>
+                                        <span class="fw-bold">{{ doctor.license_number }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-calendar-times text-primary me-2"></i> License Expiry</span>
+                                        <span class="fw-bold">{{ doctor.license_expiry|date:"Y-m-d" }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-check-circle text-primary me-2"></i> License Status</span>
+                                        <span class="fw-bold">
+                                            {% if doctor.license_status == "Valid" %}
+                                                <span class="badge bg-success">Valid</span>
+                                            {% elif doctor.license_status == "Expired" %}
+                                                <span class="badge bg-warning">Expired</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Unknown</span>
+                                            {% endif %}
+                                        </span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-clock text-primary me-2"></i> Experience</span>
+                                        <span class="fw-bold">{{ doctor.years_of_experience }} years</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-hospital me-2"></i> Affiliation
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-building text-primary me-2"></i> Department</span>
+                                        <span class="fw-bold">{{ doctor.department|default:"-" }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-user-tie text-primary me-2"></i> Position</span>
+                                        <span class="fw-bold">{{ doctor.position|default:"-" }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between">
+                                        <span><i class="fas fa-calendar-plus text-primary me-2"></i> Joining Date</span>
+                                        <span class="fw-bold">{{ doctor.joining_date|date:"Y-m-d" }}</span>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <p><i class="fas fa-calendar-day text-primary me-2"></i><strong>Working Days:</strong><br>
+                                        {{ doctor.working_days|default:"-" }}</p>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <p><i class="fas fa-clock text-primary me-2"></i><strong>Working Hours:</strong><br>
+                                        {{ doctor.working_hours|default:"-" }}</p>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-graduation-cap me-2"></i> Qualifications & Bio
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h5 class="text-primary">Qualifications</h5>
+                            <div class="p-3 bg-light rounded">
+                                {{ doctor.qualifications|default:"-"|linebreaks }}
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="text-primary">Bio</h5>
+                            <div class="p-3 bg-light rounded">
+                                {{ doctor.bio|default:"-"|linebreaks }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Documents Tab -->
+            <div class="tab-pane fade" id="documents" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-portrait me-2"></i> Profile Picture
+                            </div>
+                            <div class="card-body text-center">
+                                {% if doctor.profile_picture %}
+                                    <img src="{{ doctor.profile_picture.url }}" alt="Profile" class="img-thumbnail doc-img">
+                                {% else %}
+                                    <div class="alert alert-info">No profile picture uploaded</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-signature me-2"></i> Signature
+                            </div>
+                            <div class="card-body text-center">
+                                {% if doctor.signature %}
+                                    <img src="{{ doctor.signature.url }}" alt="Signature" class="img-thumbnail doc-img">
+                                {% else %}
+                                    <div class="alert alert-info">No signature uploaded</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Activate the first tab by default
+        const firstTab = new bootstrap.Tab(document.getElementById('personal-tab'));
+        firstTab.show();
+        
+        // Optional: Remember tab selection
+        const doctorTabs = document.getElementById('doctorTabs');
+        doctorTabs.addEventListener('click', function(e) {
+            if (e.target && e.target.matches('button[data-bs-toggle="tab"]')) {
+                localStorage.setItem('lastDoctorTab', e.target.getAttribute('id'));
+            }
+        });
+        
+        // Optional: Restore last selected tab
+        const lastTab = localStorage.getItem('lastDoctorTab');
+        if (lastTab) {
+            const tab = new bootstrap.Tab(document.getElementById(lastTab));
+            tab.show();
+        }
+    });
+    </script>
+{% endblock %}

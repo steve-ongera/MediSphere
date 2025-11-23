@@ -1,0 +1,89 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="pagetitle">
+    <h1><i class="bi bi-exclamation-triangle me-2"></i>Delete Medicine</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'admin_dashboard' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'medicines:list' %}">Medicines</a></li>
+            <li class="breadcrumb-item active">Delete Medicine</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Confirm Deletion</h5>
+                    
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-octagon me-2"></i>
+                        <strong>Warning!</strong> You are about to permanently delete this medicine record.
+                    </div>
+                    
+                    <div class="medicine-details mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Medicine Name:</strong> {{ object.name }}</p>
+                                {% if object.category %}
+                                <p><strong>Category:</strong> {{ object.category.name }}</p>
+                                {% endif %}
+                                <p><strong>Current Stock:</strong> {{ object.quantity_in_stock }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Unit Price:</strong> KSh {{ object.unit_price }}</p>
+                                {% if object.manufacturer %}
+                                <p><strong>Manufacturer:</strong> {{ object.manufacturer }}</p>
+                                {% endif %}
+                                {% if object.expiry_date %}
+                                <p><strong>Expiry Date:</strong> {{ object.expiry_date|date:"M d, Y" }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if object.image %}
+                        <div class="mt-3">
+                            <img src="{{ object.image.url }}" alt="{{ object.name }}" class="img-thumbnail" style="max-height: 150px;">
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-danger px-4">
+                                <i class="bi bi-trash me-2"></i>Confirm Delete
+                            </button>
+                            <a href="{% url 'medicines:list' %}" class="btn btn-outline-secondary px-4">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .medicine-details {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.375rem;
+        border-left: 4px solid #dc3545;
+    }
+    
+    .medicine-details p {
+        margin-bottom: 0.5rem;
+    }
+    
+    .medicine-details strong {
+        color: #495057;
+        min-width: 120px;
+        display: inline-block;
+    }
+</style>
+{% endblock %}

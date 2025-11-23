@@ -1,0 +1,22 @@
+{% extends 'communication/chat_home.html' %}
+
+{% block extra_js %}
+<script>
+    // Override the auto-scroll to handle the conversation page specifically
+    window.onload = function() {
+        const messagesContainer = document.getElementById('messages-container');
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // Highlight the active contact
+        const contacts = document.querySelectorAll('.contact');
+        contacts.forEach(contact => {
+            contact.classList.remove('active');
+            if (contact.getAttribute('onclick').includes('{{ other_user.id }}')) {
+                contact.classList.add('active');
+            }
+        });
+    };
+</script>
+{% endblock %}

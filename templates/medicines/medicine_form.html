@@ -1,0 +1,280 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="pagetitle">
+    <h1><i class="bi bi-capsule me-2"></i>{{ title }}</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'admin_dashboard' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'medicine-list' %}">Medicines</a></li>
+            <li class="breadcrumb-item active">Add New</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Medicine Details</h5>
+                    
+                    <form method="post" enctype="multipart/form-data" class="row g-3 needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Basic Information -->
+                        <div class="col-md-6">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">Medicine Name*</label>
+                            <input type="text" class="form-control {% if form.name.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.name.id_for_label }}" name="{{ form.name.name }}" 
+                                   value="{{ form.name.value|default:'' }}" required>
+                            {% if form.name.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.name.errors.0 }}
+                                </div>
+                            {% else %}
+                                <div class="valid-feedback">
+                                    Looks good!
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                            <select class="form-select {% if form.category.errors %}is-invalid{% endif %}" 
+                                    id="{{ form.category.id_for_label }}" name="{{ form.category.name }}">
+                                {% for value, label in form.category.field.choices %}
+                                    <option value="{{ value }}" {% if form.category.value == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if form.category.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.category.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Stock Information -->
+                        <div class="col-md-4">
+                            <label for="{{ form.quantity_in_stock.id_for_label }}" class="form-label">Current Stock*</label>
+                            <input type="number" class="form-control {% if form.quantity_in_stock.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.quantity_in_stock.id_for_label }}" name="{{ form.quantity_in_stock.name }}" 
+                                   value="{{ form.quantity_in_stock.value|default:'0' }}" min="0" required>
+                            {% if form.quantity_in_stock.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.quantity_in_stock.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.unit_price.id_for_label }}" class="form-label">Unit Price*</label>
+                            <div class="input-group has-validation">
+                                <span class="input-group-text">KSh</span>
+                                <input type="number" step="0.01" class="form-control {% if form.unit_price.errors %}is-invalid{% endif %}" 
+                                       id="{{ form.unit_price.id_for_label }}" name="{{ form.unit_price.name }}" 
+                                       value="{{ form.unit_price.value|default:'0' }}" min="0" required>
+                                {% if form.unit_price.errors %}
+                                    <div class="invalid-feedback">
+                                        {{ form.unit_price.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.reorder_level.id_for_label }}" class="form-label">Reorder Level</label>
+                            <input type="number" class="form-control {% if form.reorder_level.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.reorder_level.id_for_label }}" name="{{ form.reorder_level.name }}" 
+                                   value="{{ form.reorder_level.value|default:'10' }}" min="0">
+                            {% if form.reorder_level.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.reorder_level.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Manufacturer Details -->
+                        <div class="col-md-6">
+                            <label for="{{ form.manufacturer.id_for_label }}" class="form-label">Manufacturer</label>
+                            <input type="text" class="form-control {% if form.manufacturer.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.manufacturer.id_for_label }}" name="{{ form.manufacturer.name }}" 
+                                   value="{{ form.manufacturer.value|default:'' }}">
+                            {% if form.manufacturer.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.manufacturer.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.batch_number.id_for_label }}" class="form-label">Batch Number</label>
+                            <input type="text" class="form-control {% if form.batch_number.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.batch_number.id_for_label }}" name="{{ form.batch_number.name }}" 
+                                   value="{{ form.batch_number.value|default:'' }}">
+                            {% if form.batch_number.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.batch_number.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Dates and Image -->
+                        <div class="col-md-6">
+                            <label for="{{ form.expiry_date.id_for_label }}" class="form-label">Expiry Date</label>
+                            <input type="date" class="form-control {% if form.expiry_date.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.expiry_date.id_for_label }}" name="{{ form.expiry_date.name }}" 
+                                   value="{{ form.expiry_date.value|default:'' }}">
+                            {% if form.expiry_date.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.expiry_date.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.image.id_for_label }}" class="form-label">Medicine Image</label>
+                            <input type="file" class="form-control {% if form.image.errors %}is-invalid{% endif %}" 
+                                   id="{{ form.image.id_for_label }}" name="{{ form.image.name }}" 
+                                   accept="image/*">
+                            {% if form.image.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.image.errors.0 }}
+                                </div>
+                            {% endif %}
+                            {% if form.image.value %}
+                                <small class="text-muted">Current: {{ form.image.value }}</small>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Description -->
+                        <div class="col-12">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            <textarea class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
+                                      id="{{ form.description.id_for_label }}" name="{{ form.description.name }}" 
+                                      rows="3">{{ form.description.value|default:'' }}</textarea>
+                            {% if form.description.errors %}
+                                <div class="invalid-feedback">
+                                    {{ form.description.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-save me-2"></i>{{ button_text }}
+                            </button>
+                            <a href="{% url 'medicine-list' %}" class="btn btn-outline-secondary px-4">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Enhanced form styling */
+    .form-control, .form-select {
+        border-radius: 0.375rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #86b7fe;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .is-invalid {
+        border-color: #dc3545;
+    }
+    
+    .is-invalid:focus {
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+    }
+    
+    .invalid-feedback {
+        display: block;
+        color: #dc3545;
+        font-size: 0.875em;
+    }
+    
+    .valid-feedback {
+        display: none;
+        color: #198754;
+        font-size: 0.875em;
+    }
+    
+    .was-validated .form-control:valid ~ .valid-feedback,
+    .was-validated .form-control:valid ~ .valid-feedback {
+        display: block;
+    }
+    
+    textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+    
+    /* Custom date picker styling */
+    input[type="date"] {
+        position: relative;
+    }
+    
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        color: transparent;
+        background: none;
+        z-index: 1;
+    }
+    
+    input[type="date"]:before {
+        content: attr(placeholder);
+        position: absolute;
+        color: #6c757d;
+        background: white;
+        padding: 0 1rem;
+    }
+</style>
+
+<script>
+    // Form validation and enhanced date picker
+    document.addEventListener('DOMContentLoaded', function() {
+        // Bootstrap form validation
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                
+                form.classList.add('was-validated');
+            }, false);
+        });
+        
+        // Set default expiry date to today if empty
+        const expiryDateField = document.getElementById('{{ form.expiry_date.id_for_label }}');
+        if (expiryDateField && !expiryDateField.value) {
+            const today = new Date();
+            const formattedDate = today.toISOString().substr(0, 10);
+            expiryDateField.value = formattedDate;
+        }
+        
+        // Add currency formatting for price field
+        const priceField = document.getElementById('{{ form.unit_price.id_for_label }}');
+        if (priceField) {
+            priceField.addEventListener('blur', function() {
+                if (this.value) {
+                    this.value = parseFloat(this.value).toFixed(2);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

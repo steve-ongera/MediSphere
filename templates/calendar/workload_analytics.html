@@ -1,0 +1,246 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Workload Analytics{% endblock %}
+
+{% block styles %}
+<style>
+    .analytics-card {
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .analytics-header {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px 10px 0 0;
+    }
+    .analytics-body {
+        padding: 20px;
+    }
+    .metrics-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+    .metric-box {
+        width: 48%;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+    }
+    .metric-icon {
+        width: 50px;
+        height: 50px;
+        background-color: #007bff;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        font-size: 1.5em;
+    }
+    .metric-content {
+        flex-grow: 1;
+    }
+    .metric-value {
+        font-size: 1.8em;
+        font-weight: bold;
+    }
+    .metric-label {
+        color: #6c757d;
+        font-size: 0.9em;
+    }
+    .workload-progress {
+        height: 10px;
+        border-radius: 5px;
+        margin-top: 5px;
+    }
+    .summary-stats {
+        margin-top: 30px;
+    }
+    .filter-form {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Doctor Workload Analytics</h1>
+    
+    <div class="filter-form">
+        <form method="get" class="form-inline">
+            <div class="form-group mr-3">
+                <label for="start_date" class="mr-2">Start Date:</label>
+                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="form-group mr-3">
+                <label for="end_date" class="mr-2">End Date:</label>
+                <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+            </div>
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+        </form>
+    </div>
+    
+    <div class="alert alert-info">
+        Showing data for {{ date_range_days }} days ({{ start_date|date:"M d, Y" }} - {{ end_date|date:"M d, Y" }})
+    </div>
+    
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card summary-stats">
+                <div class="card-header">
+                    <h4>Summary Statistics</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Doctor</th>
+                                    <th>Total Appointments</th>
+                                    <th>Completed</th>
+                                    <th>Completion Rate</th>
+                                    <th>Avg. Daily Appointments</th>
+                                    <th>Busiest Day</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for data in analytics_data %}
+                                <tr>
+                                    <td>{{ data.doctor }}</td>
+                                    <td>{{ data.total_appointments }}</td>
+                                    <td>{{ data.completed_appointments }}</td>
+                                    <td>
+                                        {% if data.total_appointments > 0 %}
+                                            {{ data.completed_appointments|floatformat:1 }}% 
+                                            ({{ data.completed_appointments|floatformat:0 }}/{{ data.total_appointments }})
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ data.avg_daily_appointments }}</td>
+                                    <td>
+                                        {% if data.busiest_day %}
+                                            {{ data.busiest_day|date:"M d, Y" }} ({{ data.busiest_day_count }} appointments)
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% for data in analytics_data %}
+    <div class="analytics-card">
+        <div class="analytics-header">
+            <h3>{{ data.doctor }}</h3>
+        </div>
+        <div class="analytics-body">
+            <div class="metrics-container">
+                <div class="metric-box">
+                    <div class="metric-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ data.total_appointments }}</div>
+                        <div class="metric-label">Total Appointments</div>
+                    </div>
+                </div>
+                
+                <div class="metric-box">
+                    <div class="metric-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ data.completed_appointments }}</div>
+                        <div class="metric-label">Completed Appointments</div>
+                        {% if data.total_appointments > 0 %}
+                        <div class="progress workload-progress">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ data.completed_appointments|floatformat:0 }}%;" 
+                                 aria-valuenow="{{ data.completed_appointments|floatformat:0 }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="metric-box">
+                    <div class="metric-icon">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ data.avg_daily_appointments }}</div>
+                        <div class="metric-label">Avg. Daily Appointments</div>
+                    </div>
+                </div>
+                
+                <div class="metric-box">
+                    <div class="metric-icon">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <div class="metric-content">
+                        {% if data.busiest_day %}
+                        <div class="metric-value">{{ data.busiest_day_count }}</div>
+                        <div class="metric-label">Busiest Day: {{ data.busiest_day|date:"M d, Y" }}</div>
+                        {% else %}
+                        <div class="metric-value">N/A</div>
+                        <div class="metric-label">No appointments in period</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{% url 'doctor_calendar_view' %}?doctor_id={{ data.doctor.id }}" class="btn btn-outline-primary">
+                    View Calendar
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-warning">
+        No analytics data available for the selected period.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Calculate completion rate percentage
+    document.addEventListener('DOMContentLoaded', function() {
+        const rows = document.querySelectorAll('table tbody tr');
+        rows.forEach(row => {
+            const totalCell = row.cells[1].innerText;
+            const completedCell = row.cells[2].innerText;
+            const rateCell = row.cells[3];
+            
+            const total = parseInt(totalCell);
+            const completed = parseInt(completedCell);
+            
+            if (total > 0) {
+                const rate = (completed / total) * 100;
+                rateCell.innerText = `${rate.toFixed(1)}% (${completed}/${total})`;
+            }
+        });
+    });
+</script>
+{% endblock %}

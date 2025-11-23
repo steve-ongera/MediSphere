@@ -1,0 +1,271 @@
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% block title %}Create Medicine Sale - Mediclinic Management System{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-capsule me-2"></i>Create Medicine Sale</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="#">process payment</a></li>
+            <li class="breadcrumb-item active">Create from Consultation</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0"><i class="bi bi-prescription2 me-2"></i>Create Medicine Sale from Consultation</h5>
+                        <a href="#" class="btn btn-outline-light" style="color:grey;">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Sales
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <form method="get" class="row g-3 mb-4">
+                        <div class="col-md-8">
+                            <label for="consultation_code_search" class="form-label">
+                                <i class="bi bi-search me-1"></i>Consultation Code
+                            </label>
+                            <input type="text" id="consultation_code_search" name="consultation_code" 
+                                   class="form-control" placeholder="Enter Consultation Code" 
+                                   value="{{ consultation_code }}">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-clinic">
+                                <i class="bi bi-search me-2"></i>Search
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if consultation_code %}
+                        {% if prescriptions %}
+                            <div class="card mb-4 border-clinic-primary">
+                                <div class="card-header bg-clinic-light">
+                                    <h6 class="mb-0"><i class="bi bi-list-check me-2"></i>Prescription Items</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Medicine</th>
+                                                    <th>Quantity</th>
+                                                    <th>Unit Price</th>
+                                                    <th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for prescription in prescriptions %}
+                                                <tr>
+                                                    <td>{{ prescription.medicine.name }}</td>
+                                                    <td>{{ prescription.quantity }}</td>
+                                                    <td>Ksh {{ prescription.medicine.unit_price|floatformat:2 }}</td>
+                                                    <td>Ksh {{ prescription.get_total_price|floatformat:2 }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                            <tfoot class="fw-bold">
+                                                <tr>
+                                                    <td colspan="3" class="text-end">Total Amount</td>
+                                                    <td>Ksh {{ total_amount|floatformat:2 }}</td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="consultation_code" value="{{ consultation_code }}">
+                                
+                                <!-- Patient and Receptionist Information -->
+                                <div class="card mb-4 border-clinic-primary">
+                                    <div class="card-header bg-clinic-light">
+                                        <h6 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Transaction Details</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="patient" class="form-label">
+                                                        Patient <span class="text-danger">*</span>
+                                                    </label>
+                                                    <input type="text" id="patient" class="form-control" 
+                                                        value="{% if patient %}{{ patient.first_name }} {{ patient.last_name }}{% endif %}" readonly>
+                                                    <input type="hidden" name="patient" value="{% if patient %}{{ patient.id }}{% endif %}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="receptionist" class="form-label">
+                                                        Receptionist <span class="text-danger">*</span>
+                                                    </label>
+                                                    <input type="text" id="receptionist" class="form-control" 
+                                                        value="{{ request.user.get_full_name }}" readonly>
+                                                    <input type="hidden" name="receptionist" value="{{ request.user.id }}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Payment Information -->
+                                <div class="card mb-4 border-clinic-primary">
+                                    <div class="card-header bg-clinic-light">
+                                        <h6 class="mb-0"><i class="bi bi-credit-card me-2"></i>Payment Information</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="payment_method" class="form-label">
+                                                        Payment Method <span class="text-danger">*</span>
+                                                    </label>
+                                                    <select id="payment_method" name="payment_method" class="form-select" required>
+                                                        <option value="">Select Payment Method</option>
+                                                        <option value="CASH" {% if form.payment_method.value == 'CASH' %}selected{% endif %}>Cash</option>
+                                                        <option value="MPESA" {% if form.payment_method.value == 'MPESA' %}selected{% endif %}>M-Pesa</option>
+                                                        <option value="INSURANCE" {% if form.payment_method.value == 'INSURANCE' %}selected{% endif %}>Insurance</option>
+                                                        <option value="CREDIT" {% if form.payment_method.value == 'CREDIT' %}selected{% endif %}>Credit</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="total_amount" class="form-label">
+                                                        Total Amount <span class="text-danger">*</span>
+                                                    </label>
+                                                    <input type="text" id="total_amount" class="form-control" 
+                                                           value="Ksh {{ total_amount|floatformat:2 }}" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div id="mpesa_fields" class="row mb-3" style="display: none;">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="mpesa_number" class="form-label">M-Pesa Number</label>
+                                                    <input type="text" id="mpesa_number" name="mpesa_number" 
+                                                           class="form-control" value="{{ form.mpesa_number.value|default_if_none:'' }}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="mpesa_code" class="form-label">M-Pesa Transaction Code</label>
+                                                    <input type="text" id="mpesa_code" name="mpesa_code" 
+                                                           class="form-control" value="{{ form.mpesa_code.value|default_if_none:'' }}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="notes" class="form-label">Notes</label>
+                                            <textarea id="notes" name="notes" class="form-control" 
+                                                      rows="2">{{ form.notes.value|default_if_none:'' }}</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-end">
+                                    <a href="{% url 'create_sale_from_consultation' %}" class="btn btn-outline-secondary me-2">
+                                        <i class="bi bi-x-circle me-2"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-clinic">
+                                        <i class="bi bi-check-circle me-2"></i>Complete Sale
+                                    </button>
+                                </div>
+                            </form>
+                            
+                            <script>
+                                // Show/hide M-Pesa fields based on payment method selection
+                                document.getElementById('payment_method').addEventListener('change', function() {
+                                    const mpesaFields = document.getElementById('mpesa_fields');
+                                    mpesaFields.style.display = this.value === 'MPESA' ? 'flex' : 'none';
+                                });
+                                
+                                // Trigger change event on page load in case MPESA is already selected
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    document.getElementById('payment_method').dispatchEvent(new Event('change'));
+                                });
+                            </script>
+                        {% else %}
+                            <div class="alert alert-warning alert-dismissible fade show">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                No prescriptions found for consultation code: <strong>{{ consultation_code }}</strong>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Form styling enhancements */
+    .form-control, .form-select {
+        border-radius: 0.375rem;
+        border: 1px solid #ced4da;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--clinic-primary);
+        box-shadow: 0 0 0 0.25rem rgba(26, 140, 255, 0.25);
+    }
+    
+    textarea.form-control {
+        min-height: 100px;
+    }
+    
+    .card {
+        border-radius: 0.5rem;
+    }
+    
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+    }
+    
+    .is-invalid {
+        border-color: #dc3545;
+    }
+    
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.875em;
+    }
+    
+    .btn-outline-secondary:hover {
+        color: #fff;
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+    }
+    
+    tfoot td {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}

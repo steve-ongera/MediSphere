@@ -1,0 +1,227 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Invoice - {{ sale.sale_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Invoice-specific styling */
+    :root {
+        --clinic-primary: #1a6fbf;
+        --clinic-secondary: #0d4e8a;
+        --invoice-accent: #28a745;
+    }
+    
+    .invoice-header {
+        background-color: var(--clinic-primary);
+        color: white;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .invoice-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .invoice-title {
+        font-weight: 300;
+        color: var(--clinic-primary);
+    }
+    
+    .badge-status {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .status-completed { background-color: #28a745; color: white; }
+    .status-pending { background-color: #ffc107; color: black; }
+    .status-failed { background-color: #dc3545; color: white; }
+    
+    .total-display {
+        font-size: 1.5rem;
+        color: var(--invoice-accent);
+        font-weight: 600;
+    }
+    
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        .invoice-printable, .invoice-printable * {
+            visibility: visible;
+        }
+        .invoice-printable {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+        }
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid invoice-printable">
+    <!-- Invoice Header with Print Controls -->
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <h1 class="h3 mb-0 text-gray-800">Invoice Details</h1>
+        <div>
+            <a href="{% url 'otc_sale_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Sales
+            </a>
+            <button onclick="window.print();" class="btn btn-primary ms-2">
+                <i class="fas fa-print"></i> Print Invoice
+            </button>
+        </div>
+    </div>
+    
+    {% if messages %}
+    <div class="messages no-print">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <strong>{{ message.tags|title }}:</strong> {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Invoice Header -->
+    <div class="invoice-header text-center mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-6 text-start">
+                <h2 class="mb-1">Nebocare Pharmacy </h2>
+                <p class="mb-1">Kingongo, Nyeri</p>
+                <p class="mb-1">Phone: +254 722 418 197</p>
+                <p class="mb-0">Email: info@nebocare.com</p>
+            </div>
+            <div class="col-md-6">
+               <h4 class="fw-bold">INVOICE</h4>
+                <div class="d-flex justify-content-center">
+                    <div class="bg-white p-2 rounded">
+                        <!-- QR Code or Barcode would go here -->
+                        <img src="{% static 'assets/img/barcode.png' %}" alt="Invoice Barcode" style="height: 60px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Invoice Meta Data -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="invoice-card p-3 mb-3">
+                <h5 class="invoice-title">Bill To:</h5>
+                <p class="mb-1"><strong>Customer:</strong> {{ sale.customer_name }}</p>
+                {% if sale.customer_contact %}
+                <p class="mb-1"><strong>Contact:</strong> {{ sale.customer_contact }}</p>
+                {% endif %}
+                <p class="mb-0"><strong>Date:</strong> {{ sale.created_at|date:"F d, Y H:i" }}</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="invoice-card p-3 mb-3">
+                <h5 class="invoice-title">Invoice Details:</h5>
+                <p class="mb-1"><strong>Invoice #:</strong> {{ sale.sale_id }}</p>
+                <p class="mb-1"><strong>Cashier:</strong> {{ sale.cashier.get_full_name|default:sale.cashier.username }}</p>
+                <p class="mb-1">
+                    <strong>Payment Status:</strong>
+                    <span class="badge-status status-{{ sale.payment_status }}">
+                        {{ sale.get_payment_status_display }}
+                    </span>
+                </p>
+                {% if sale.mpesa_code %}
+                <p class="mb-0"><strong>M-PESA Code:</strong> {{ sale.mpesa_code }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Items Table -->
+    <div class="invoice-card p-0 mb-4">
+        <div class="table-responsive">
+            <table class="table table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 5%">#</th>
+                        <th style="width: 45%">Item Description</th>
+                        <th style="width: 15%" class="text-end">Unit Price</th>
+                        <th style="width: 15%" class="text-center">Qty</th>
+                        <th style="width: 20%" class="text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in sale.get_items %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.medicine.name }}</td>
+                        <td class="text-end">KSh {{ item.unit_price|floatformat:2 }}</td>
+                        <td class="text-center">{{ item.quantity }}</td>
+                        <td class="text-end">KSh {{ item.subtotal|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end fw-bold">Subtotal:</td>
+                        <td class="text-end">KSh {{ sale.total_amount|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="4" class="text-end fw-bold">Tax (0%):</td>
+                        <td class="text-end">KSh 0.00</td>
+                    </tr>
+                    <tr>
+                        <td colspan="4" class="text-end fw-bold">Total Amount:</td>
+                        <td class="text-end total-display">KSh {{ sale.total_amount|floatformat:2 }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Payment Notes -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="invoice-card p-3 mb-4">
+                <h5 class="invoice-title">Payment Method</h5>
+                <p class="mb-1"><strong>Method:</strong> {{ sale.get_payment_method_display }}</p>
+                <p class="mb-0"><strong>Status:</strong> 
+                    <span class="badge-status status-{{ sale.payment_status }}">
+                        {{ sale.get_payment_status_display }}
+                    </span>
+                </p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="invoice-card p-3 mb-4">
+                <h5 class="invoice-title">Notes</h5>
+                {% if sale.notes %}
+                <p class="text-muted mb-0">{{ sale.notes }}</p>
+                {% else %}
+                <p class="text-muted mb-0">No additional notes for this invoice.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="text-center mt-4 no-print">
+        <p class="text-muted">Thank you for your business!</p>
+        <p class="text-muted small">For any inquiries, please contact our customer service.</p>
+    </div>
+    
+    <!-- Print-only footer -->
+    <div class="d-none d-print-block text-center mt-4">
+        <hr>
+        <p class="small text-muted">This is a computer generated invoice. No signature required.</p>
+        <p class="small text-muted">Printed on: {% now "F d, Y H:i" %}</p>
+    </div>
+</div>
+{% endblock %}

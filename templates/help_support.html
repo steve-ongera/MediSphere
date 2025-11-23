@@ -1,0 +1,254 @@
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-question-circle me-2"></i>Clinic Help Center</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item active">Help & Support</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-heart-pulse me-2"></i>Patient Support Services</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Quick Help Section -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-lightning-charge me-2"></i>Quick Help</h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-clinic">
+                                            <i class="bi bi-calendar-check me-2"></i>Appointments
+                                        </h6>
+                                        <p class="card-text">
+                                            Schedule, reschedule or cancel your medical appointments online.
+                                        </p>
+                                        <a href="#" class="btn btn-sm btn-clinic">
+                                            <i class="bi bi-arrow-right-circle me-1"></i> Manage Appointments
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-clinic">
+                                            <i class="bi bi-file-medical me-2"></i>Medical Records
+                                        </h6>
+                                        <p class="card-text">
+                                            Access your medical history, test results and prescriptions.
+                                        </p>
+                                        <a href="#" class="btn btn-sm btn-clinic">
+                                            <i class="bi bi-arrow-right-circle me-1"></i> View Records
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title text-clinic">
+                                            <i class="bi bi-credit-card me-2"></i>Billing
+                                        </h6>
+                                        <p class="card-text">
+                                            View statements, make payments or inquire about insurance.
+                                        </p>
+                                        <a href="#" class="btn btn-sm btn-clinic">
+                                            <i class="bi bi-arrow-right-circle me-1"></i> Billing Portal
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FAQ Section -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-question-circle me-2"></i>Frequently Asked Questions</h5>
+                        <div class="accordion" id="faqAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                        How do I request a prescription refill?
+                                    </button>
+                                </h2>
+                                <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        Prescription refills can be requested through your patient portal or by calling our pharmacy at extension 205. Allow 24-48 hours for processing.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                        What should I bring to my first appointment?
+                                    </button>
+                                </h2>
+                                <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        Please bring your insurance card, photo ID, list of current medications, and any relevant medical records from previous providers.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                        How do I access telehealth services?
+                                    </button>
+                                </h2>
+                                <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        Telehealth appointments are available through our patient portal. You'll receive a secure link to join your virtual visit 15 minutes before your scheduled time.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Section -->
+                    <div>
+                        <h5 class="text-clinic mb-3"><i class="bi bi-telephone me-2"></i>Contact Our Clinic</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <div class="card">
+                                    <div class="card-header bg-clinic-light">
+                                        <h6 class="mb-0"><i class="bi bi-building me-2"></i>Department Contacts</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>
+                                                    <i class="bi bi-telephone-forward me-2 text-clinic"></i>
+                                                    Main Reception
+                                                </span>
+                                                <span class="badge bg-clinic-primary">(254) 7564-4567</span>
+                                            </li>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>
+                                                    <i class="bi bi-capsule me-2 text-clinic"></i>
+                                                    Pharmacy
+                                                </span>
+                                                <span class="badge bg-clinic-primary">(254) 7647-6738</span>
+                                            </li>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <span>
+                                                    <i class="bi bi-calendar2-week me-2 text-clinic"></i>
+                                                    Appointments
+                                                </span>
+                                                <span class="badge bg-clinic-primary">(254) 7547-8757</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <div class="card">
+                                    <div class="card-header bg-clinic-light">
+                                        <h6 class="mb-0"><i class="bi bi-envelope me-2"></i>Email Support</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item">
+                                                <i class="bi bi-envelope-at me-2 text-clinic"></i>
+                                                <strong>General Inquiries:</strong> info@clinic.info.com
+                                            </li>
+                                            <li class="list-group-item">
+                                                <i class="bi bi-file-earmark-medical me-2 text-clinic"></i>
+                                                <strong>Medical Records:</strong> records@clinic.info.com
+                                            </li>
+                                            <li class="list-group-item">
+                                                <i class="bi bi-credit-card me-2 text-clinic"></i>
+                                                <strong>Billing:</strong> billing@clinic.gmail.com
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Emergency Contacts -->
+                        <div class="alert alert-warning">
+                            <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Emergency Contacts</h6>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Medical Emergency:</strong> 911 or (254) 1122-84093</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>24/7 Nurse Line:</strong> (254) 5779-0687</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-clinic-light">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Our support team is available Monday-Friday, 8:00 AM - 6:00 PM
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    :root {
+        --clinic-primary: #1a8cff;
+        --clinic-secondary: #66b3ff;
+    }
+    
+    .bg-clinic-primary {
+        background-color: var(--clinic-primary);
+    }
+    
+    .bg-clinic-light {
+        background-color: rgba(26, 140, 255, 0.05);
+    }
+    
+    .text-clinic {
+        color: var(--clinic-primary);
+    }
+    
+    .btn-clinic {
+        background-color: var(--clinic-primary);
+        color: white;
+    }
+    
+    .btn-clinic:hover {
+        background-color: var(--clinic-secondary);
+        color: white;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(26, 140, 255, 0.1);
+        color: var(--clinic-primary);
+    }
+</style>
+
+{% endblock %}

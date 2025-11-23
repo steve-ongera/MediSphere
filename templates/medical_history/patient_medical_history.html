@@ -1,0 +1,346 @@
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% block title %}{{ patient.first_name }}'s Medical History - Mediclinic Management System{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-clipboard2-pulse me-2"></i>{{ patient.first_name }} {{ patient.last_name }}'s Medical History</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'all_medical_records' %}">Medical Records</a></li>
+            <li class="breadcrumb-item active">{{ patient.first_name }}'s History</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <!-- Patient Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card border-clinic-primary h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="bi bi-person-vcard fs-2 text-clinic-primary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="text-clinic-primary">Patient Information</h6>
+                                    <p class="mb-0">
+                                        <strong>ID:</strong> {{ patient.id_number }}<br>
+                                        <strong>Age:</strong> {{ patient.age }} years<br>
+                                        <strong>Gender:</strong> {{ patient.get_gender_display }}<br>
+                                        <strong>Blood Type:</strong> {% if patient.blood_type %}{{ patient.blood_type }}{% else %}Unknown{% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-clinic-success h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="bi bi-telephone fs-2 text-clinic-success"></i>
+                                </div>
+                                <div>
+                                    <h6 class="text-clinic-success">Contact Information</h6>
+                                    <p class="mb-0">
+                                        <strong>Phone:</strong> {{ patient.phone_number }}<br>
+                                        {% if patient.email %}<strong>Email:</strong> {{ patient.email }}<br>{% endif %}
+                                        {% if patient.address %}<strong>Address:</strong> {{ patient.address|truncatewords:3 }}{% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-clinic-info h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="bi bi-heart-pulse fs-2 text-clinic-info"></i>
+                                </div>
+                                <div>
+                                    <h6 class="text-clinic-info">Medical Summary</h6>
+                                    <p class="mb-0">
+                                        <strong>Records:</strong> {{ medical_history.count }}<br>
+                                        <strong>Allergies:</strong> {{ allergy_count }}<br>
+                                        <strong>Chronic Conditions:</strong> {{ chronic_condition_count }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical History Tabs -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0"><i class="bi bi-clipboard2-pulse-fill me-2"></i>Medical Records</h5>
+                        <div>
+                            <a href="{% url 'all_medical_records'%}" class="btn btn-outline-light me-2">
+                                <i class="bi bi-arrow-left me-1"></i> Back to Records
+                            </a>
+                            <a href="#" class="btn btn-clinic-light">
+                                <i class="bi bi-plus me-1"></i> Add Record
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <ul class="nav nav-tabs mb-4" id="medicalHistoryTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">
+                                <i class="bi bi-list-check me-1"></i> All Records ({{ medical_history.count }})
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="allergies-tab" data-bs-toggle="tab" data-bs-target="#allergies" type="button" role="tab">
+                                <i class="bi bi-exclamation-triangle me-1"></i> Allergies ({{ allergy_count }})
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="chronic-tab" data-bs-toggle="tab" data-bs-target="#chronic" type="button" role="tab">
+                                <i class="bi bi-activity me-1"></i> Chronic Conditions ({{ chronic_condition_count }})
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="surgeries-tab" data-bs-toggle="tab" data-bs-target="#surgeries" type="button" role="tab">
+                                <i class="bi bi-scissors me-1"></i> Surgeries ({{ surgery_count }})
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="medicalHistoryTabsContent">
+                        <!-- All Records Tab -->
+                        <div class="tab-pane fade show active" id="all" role="tabpanel">
+                            {% if medical_history %}
+                            <div class="timeline">
+                                {% for record in medical_history %}
+                                <div class="timeline-item {% if record.record_type == 'Allergy' %}timeline-item-danger
+                                                    {% elif record.record_type == 'Chronic Condition' %}timeline-item-info
+                                                    {% elif record.record_type == 'Surgery' %}timeline-item-warning
+                                                    {% else %}timeline-item-secondary{% endif %}">
+                                    <div class="timeline-point"></div>
+                                    <div class="timeline-event">
+                                        <div class="timeline-header">
+                                            <h6 class="mb-0">{{ record.record_type }}</h6>
+                                            <small class="text-muted">{{ record.date_recorded|date:"M d, Y" }}</small>
+                                            {% if record.consultation %}
+                                            <span class="badge bg-clinic-primary ms-2">From Consultation</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="timeline-body">
+                                            <p>{{ record.description }}</p>
+                                            {% if record.recorded_by %}
+                                            <small class="text-muted">Recorded by: {{ record.recorded_by.get_full_name }}</small>
+                                            {% endif %}
+                                        </div>
+                                        <div class="timeline-footer">
+                                            {% if record.consultation %}
+                                            <a href="{% url 'consultation_detail' record.consultation.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye me-1"></i> View Details
+                                            </a>
+                                            {% endif %}
+                                            <a href="#" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-pencil me-1"></i> Edit
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="bi bi-clipboard2-x fs-1 text-muted mb-3"></i>
+                                <h5 class="text-muted">No medical history records found</h5>
+                                <a href="{% url 'add_medical_record' patient.id %}" class="btn btn-clinic mt-2">
+                                    <i class="bi bi-plus me-1"></i> Add First Record
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Allergies Tab -->
+                        <div class="tab-pane fade" id="allergies" role="tabpanel">
+                            {% if allergies %}
+                            <div class="list-group">
+                                {% for record in allergies %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">Allergy: {{ record.description|truncatewords:10 }}</h6>
+                                        <small>{{ record.date_recorded|date:"M d, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ record.description }}</p>
+                                    <small>Recorded by: {% if record.recorded_by %}{{ record.recorded_by.get_full_name }}{% else %}System{% endif %}</small>
+                                    <div class="mt-2">
+                                        <a href="#" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil me-1"></i> Edit
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>No allergy records found for this patient.
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Chronic Conditions Tab -->
+                        <div class="tab-pane fade" id="chronic" role="tabpanel">
+                            {% if chronic_conditions %}
+                            <div class="list-group">
+                                {% for record in chronic_conditions %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">Condition: {{ record.description|truncatewords:10 }}</h6>
+                                        <small>{{ record.date_recorded|date:"M d, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ record.description }}</p>
+                                    <small>Recorded by: {% if record.recorded_by %}{{ record.recorded_by.get_full_name }}{% else %}System{% endif %}</small>
+                                    <div class="mt-2">
+                                        <a href="#" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil me-1"></i> Edit
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>No chronic condition records found for this patient.
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Surgeries Tab -->
+                        <div class="tab-pane fade" id="surgeries" role="tabpanel">
+                            {% if surgeries %}
+                            <div class="list-group">
+                                {% for record in surgeries %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">Surgery: {{ record.description|truncatewords:10 }}</h6>
+                                        <small>{{ record.date_recorded|date:"M d, Y" }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ record.description }}</p>
+                                    <small>Recorded by: {% if record.recorded_by %}{{ record.recorded_by.get_full_name }}{% else %}System{% endif %}</small>
+                                    <div class="mt-2">
+                                        <a href="#" class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-pencil me-1"></i> Edit
+                                        </a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>No surgery records found for this patient.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Timeline styling */
+    .timeline {
+        position: relative;
+        padding-left: 1rem;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-point {
+        position: absolute;
+        left: -1.5rem;
+        top: 0;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background-color: #6c757d;
+    }
+    
+    .timeline-item-danger .timeline-point { background-color: #dc3545; }
+    .timeline-item-warning .timeline-point { background-color: #ffc107; }
+    .timeline-item-info .timeline-point { background-color: #0dcaf0; }
+    .timeline-item-secondary .timeline-point { background-color: #6c757d; }
+    
+    .timeline-event {
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        border-left: 3px solid var(--bs-border-color);
+    }
+    
+    .timeline-item-danger .timeline-event { border-left-color: #dc3545; }
+    .timeline-item-warning .timeline-event { border-left-color: #ffc107; }
+    .timeline-item-info .timeline-event { border-left-color: #0dcaf0; }
+    .timeline-item-secondary .timeline-event { border-left-color: #6c757d; }
+    
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .timeline-body {
+        margin-bottom: 0.5rem;
+    }
+    
+    .timeline-footer {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Card styling */
+    .card {
+        border-radius: 0.5rem;
+    }
+    
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+    }
+    
+    /* List group styling */
+    .list-group-item {
+        border-radius: 0.375rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Tab styling */
+    .nav-tabs .nav-link {
+        border-radius: 0.375rem 0.375rem 0 0;
+    }
+</style>
+{% endblock %}

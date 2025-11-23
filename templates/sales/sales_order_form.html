@@ -1,0 +1,308 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} - Coca-Cola ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0" style="color: #F40009;">
+                    <i class="fas fa-edit me-2"></i>{{ title }}
+                </h2>
+                <div>
+                    <a href="#" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-1"></i> Back to List
+                    </a>
+                    <a href="#" class="btn btn-outline-primary">
+                        <i class="fas fa-eye me-1"></i> View Order
+                    </a>
+                </div>
+            </div>
+            <hr class="mt-2 mb-4" style="border-color: #F40009; opacity: 0.2;">
+        </div>
+    </div>
+
+    <!-- Order Form -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="post" id="salesOrderForm">
+                {% csrf_token %}
+                
+                <!-- Order Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5 class="mb-3" style="color: #F40009;">
+                            <i class="fas fa-info-circle me-2"></i>Order Information
+                        </h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Customer</label>
+                            {{ order_form.customer }}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Order Number</label>
+                                {{ order_form.order_number }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Order Date</label>
+                                {{ order_form.order_date }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Sales Representative</label>
+                            {{ order_form.sales_representative }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5 class="mb-3" style="color: #F40009;">
+                            <i class="fas fa-truck me-2"></i>Shipping & Billing
+                        </h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            {{ order_form.status }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Payment Status</label>
+                            {{ order_form.payment_status }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Delivery Date</label>
+                            {{ order_form.delivery_date }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Address Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Shipping Address</label>
+                        {{ order_form.shipping_address }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Billing Address</label>
+                        {{ order_form.billing_address }}
+                    </div>
+                </div>
+                
+                <!-- Order Items -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 style="color: #F40009;">
+                            <i class="fas fa-boxes me-2"></i>Order Items
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-danger" id="add-item">
+                            <i class="fas fa-plus me-1"></i> Add Item
+                        </button>
+                    </div>
+                    
+                    {{ item_formset.management_form }}
+                    <div id="items-formset">
+                        {% for form in item_formset %}
+                        <div class="item-form card mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-5 mb-3">
+                                        <label class="form-label">Product</label>
+                                        {{ form.product_variant }}
+                                    </div>
+                                    <div class="col-md-2 mb-3">
+                                        <label class="form-label">Quantity</label>
+                                        {{ form.quantity }}
+                                    </div>
+                                    <div class="col-md-2 mb-3">
+                                        <label class="form-label">Unit Price</label>
+                                        {{ form.unit_price }}
+                                    </div>
+                                    <div class="col-md-2 mb-3">
+                                        <label class="form-label">Discount %</label>
+                                        {{ form.discount }}
+                                    </div>
+                                    <div class="col-md-1 mb-3 d-flex align-items-end">
+                                        {% if form.instance.pk %}
+                                            {{ form.DELETE }}
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-item ms-2">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% for hidden in form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                        <i class="fas fa-times me-1"></i> Cancel
+                    </button>
+                    <div>
+                        <button type="submit" name="save" class="btn btn-primary me-2">
+                            <i class="fas fa-save me-1"></i> Save Changes
+                        </button>
+                        <button type="submit" name="save_and_continue" class="btn btn-danger">
+                            <i class="fas fa-redo me-1"></i> Save & Continue
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Confirmation Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Cancel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel? Any unsaved changes will be lost.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> No, Continue Editing
+                </button>
+                <a href="#" class="btn btn-danger">
+                    <i class="fas fa-check me-1"></i> Yes, Cancel Changes
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Add new item form
+    $('#add-item').click(function() {
+        const formCount = $('#id_items-TOTAL_FORMS').val();
+        const formPrefix = 'items-' + formCount + '-';
+        const newForm = `
+        <div class="item-form card mb-3">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label">Product</label>
+                        <select name="${formPrefix}product_variant" class="form-select product-variant" id="id_${formPrefix}product_variant">
+                            {% for product in products %}
+                            <option value="{{ product.id }}" data-price="{{ product.selling_price }}">
+                                {{ product.name }} ({{ product.size }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" name="${formPrefix}quantity" class="form-control quantity" 
+                               min="1" step="1" id="id_${formPrefix}quantity">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Unit Price</label>
+                        <input type="number" name="${formPrefix}unit_price" class="form-control unit-price" 
+                               step="0.01" id="id_${formPrefix}unit_price">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Discount %</label>
+                        <input type="number" name="${formPrefix}discount" class="form-control discount" 
+                               step="0.01" max="100" id="id_${formPrefix}discount">
+                    </div>
+                    <div class="col-md-1 mb-3 d-flex align-items-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-item">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <input type="hidden" name="${formPrefix}id" id="id_${formPrefix}id">
+                <input type="hidden" name="${formPrefix}sales_order" value="{{ order.pk }}" id="id_${formPrefix}sales_order">
+            </div>
+        </div>`;
+        $('#items-formset').append(newForm);
+        $('#id_items-TOTAL_FORMS').val(parseInt(formCount) + 1);
+        
+        // Initialize product price when selected
+        $(`#id_${formPrefix}product_variant`).change(function() {
+            const price = $(this).find(':selected').data('price');
+            $(this).closest('.row').find('.unit-price').val(price);
+        });
+    });
+
+    // Remove item form
+    $(document).on('click', '.remove-item', function() {
+        const $form = $(this).closest('.item-form');
+        const $deleteField = $form.find('input[name$="-DELETE"]');
+        
+        if ($deleteField.length) {
+            // Existing item - mark for deletion
+            $deleteField.val('on');
+            $form.hide();
+        } else {
+            // New item - remove completely
+            $form.remove();
+            const formCount = parseInt($('#id_items-TOTAL_FORMS').val());
+            $('#id_items-TOTAL_FORMS').val(formCount - 1);
+        }
+    });
+
+    // Initialize product prices for existing items
+    $('.product-variant').each(function() {
+        const $this = $(this);
+        const price = $this.find(':selected').data('price');
+        if (price && !$this.closest('.row').find('.unit-price').val()) {
+            $this.closest('.row').find('.unit-price').val(price);
+        }
+    });
+
+    // Update product price when selection changes
+    $('.product-variant').change(function() {
+        const price = $(this).find(':selected').data('price');
+        $(this).closest('.row').find('.unit-price').val(price);
+    });
+});
+</script>
+
+<style>
+    .item-form {
+        transition: all 0.3s ease;
+    }
+    
+    .item-form.hidden {
+        opacity: 0.5;
+        background-color: #f8f9fa;
+    }
+    
+    select.form-select, input.form-control {
+        border-color: #ced4da;
+    }
+    
+    select.form-select:focus, input.form-control:focus {
+        border-color: #F40009;
+        box-shadow: 0 0 0 0.25rem rgba(244, 0, 9, 0.25);
+    }
+    
+    .card {
+        border-radius: 0.5rem;
+    }
+    
+    .form-label {
+        font-weight: 500;
+        color: #495057;
+    }
+</style>
+{% endblock %}

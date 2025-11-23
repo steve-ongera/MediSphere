@@ -1,0 +1,925 @@
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% block title %}Medicine Inventory - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-capsules me-2"></i>Medicine Inventory</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Dashboard</a></li>
+            <li class="breadcrumb-item active">Inventory</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0"><i class="bi bi-capsules me-2"></i>All Medicines</h5>
+                        <div class="d-flex">
+                            <div class="input-group me-3" style="max-width: 300px;">
+                                <input type="text" class="form-control" placeholder="Search medicines..." 
+                                       id="medicineSearch" minlength="2" required>
+                                <button class="btn btn-outline-light" type="button" id="searchButton">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                            <a href="{% url 'medicine-create' %}" class="btn btn-clinic-light" style="color:grey">
+                                <i class="bi bi-plus-circle me-2"></i>Add New Medicine
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body" id="medicineCardsContainer">
+                    {% include 'medicines/includes/medicine_cards.html' %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <div class="card-footer bg-white">
+                    <nav aria-label="Medicine pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1" aria-label="First">
+                                    <span aria-hidden="true"><i class="bi bi-chevron-double-left"></i></span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                    <span aria-hidden="true"><i class="bi bi-chevron-left"></i></span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                    <span aria-hidden="true"><i class="bi bi-chevron-right"></i></span>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                                    <span aria-hidden="true"><i class="bi bi-chevron-double-right"></i></span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Consistent with patient form styling */
+    .form-control {
+        border-radius: 0.375rem;
+        border: 1px solid #ced4da;
+    }
+    
+    .form-control:focus {
+        border-color: var(--clinic-primary);
+        box-shadow: 0 0 0 0.25rem rgba(26, 140, 255, 0.25);
+    }
+    
+    .card {
+        border-radius: 0.5rem;
+    }
+    
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+    }
+    
+    .btn-outline-light:hover {
+        color: var(--clinic-primary);
+        background-color: #f8f9fa;
+    }
+</style>
+
+
+
+<!-- Add this JavaScript at the bottom of your template -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('medicineSearch');
+    const searchButton = document.getElementById('searchButton');
+    const medicineCardsContainer = document.getElementById('medicineCardsContainer');
+    let searchTimeout;
+
+    function performSearch() {
+        const searchTerm = searchInput.value.trim();
+        
+        // Only search if at least 2 characters are entered
+        if (searchTerm.length >= 2) {
+            // Show loading indicator
+            medicineCardsContainer.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i></div>';
+            
+            // Make AJAX request
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `?search=${encodeURIComponent(searchTerm)}`, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    medicineCardsContainer.innerHTML = response.html;
+                    
+                    // Update URL without reloading the page
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('search', searchTerm);
+                    window.history.pushState({ path: newUrl.href }, '', newUrl.href);
+                } else {
+                    medicineCardsContainer.innerHTML = '<div class="text-center py-5"><i class="fas fa-exclamation-triangle fa-2x text-danger"></i><p class="text-muted mt-2">Error loading results</p></div>';
+                }
+            };
+            
+            xhr.onerror = function() {
+                medicineCardsContainer.innerHTML = '<div class="text-center py-5"><i class="fas fa-exclamation-triangle fa-2x text-danger"></i><p class="text-muted mt-2">Network error</p></div>';
+            };
+            
+            xhr.send();
+        } else if (searchTerm.length === 0) {
+            // If search is cleared, reload the original page
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', window.location.pathname, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    medicineCardsContainer.innerHTML = response.html;
+                    
+                    // Update URL to remove search param
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.delete('search');
+                    window.history.pushState({ path: newUrl.href }, '', newUrl.href);
+                }
+            };
+            
+            xhr.send();
+        }
+    }
+
+    // Search on button click
+    searchButton.addEventListener('click', performSearch);
+
+    // Search on Enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+
+    // Search as you type (with debounce)
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        if (searchInput.value.trim().length >= 2) {
+            searchTimeout = setTimeout(performSearch, 500);
+        } else if (searchInput.value.trim().length === 0) {
+            // Clear search immediately when input is empty
+            performSearch();
+        }
+    });
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        
+        if (searchParam !== null) {
+            searchInput.value = searchParam;
+            performSearch();
+        } else if (searchInput.value !== '') {
+            searchInput.value = '';
+            performSearch();
+        }
+    });
+});
+</script>
+
+<!-- Edit Medicine Modal -->
+<div class="modal fade" id="editMedicineModal" tabindex="-1" aria-labelledby="editMedicineModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #0d6efd; color: white;">
+                <h5 class="modal-title" id="editMedicineModalLabel">Edit Medicine</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editMedicineForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="editMedicineId" name="id" value="">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editMedicineName" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="editMedicineName" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editMedicineManufacturer" class="form-label">Manufacturer</label>
+                            <input type="text" class="form-control" id="editMedicineManufacturer" name="manufacturer">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editMedicineBatch" class="form-label">Batch Number</label>
+                            <input type="text" class="form-control" id="editMedicineBatch" name="batch_number">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editMedicineExpiry" class="form-label">Expiry Date</label>
+                            <input type="date" class="form-control" id="editMedicineExpiry" name="expiry_date">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editMedicineQuantity" class="form-label">Stock Quantity</label>
+                            <input type="number" class="form-control" id="editMedicineQuantity" name="quantity" min="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editMedicineReorder" class="form-label">Reorder Level</label>
+                            <input type="number" class="form-control" id="editMedicineReorder" name="reorder_level" min="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editMedicinePrice" class="form-label">Unit Price</label>
+                            <input type="number" class="form-control" id="editMedicinePrice" name="price" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="editMedicineDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editMedicineDescription" name="description" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Medicine</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Medicine Detail Modal -->
+<div class="modal fade" id="medicineDetailModal" tabindex="-1" aria-labelledby="medicineDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #1a73e8; color: white;">
+                <h5 style="color:white" class="modal-title" id="medicineDetailModalLabel">Medicine Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4 text-center">
+                        <div class="mb-3" id="medicineImageContainer" style="height: 200px; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-pills fa-5x text-muted" id="medicineDefaultIcon"></i>
+                            <img src="" alt="Medicine Image" class="img-fluid h-100" id="medicineDetailImage" style="display: none; object-fit: contain;">
+                        </div>
+                        <h4 id="medicineDetailName">Loading...</h4>
+                        <div class="badge bg-primary bg-opacity-10 text-primary mb-3" id="medicineDetailCategory">...</div>
+                        <hr>
+                        <div class="text-start">
+                            <p><strong><i class="fas fa-industry me-2" style="color: #1a73e8;"></i> Manufacturer:</strong> <span id="medicineDetailManufacturer">...</span></p>
+                            <p><strong><i class="fas fa-barcode me-2" style="color: #1a73e8;"></i> Batch Number:</strong> <span id="medicineDetailBatch">...</span></p>
+                            <p><strong><i class="fas fa-calendar-times me-2" style="color: #1a73e8;"></i> Expiry Date:</strong> <span id="medicineDetailExpiry">...</span></p>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card mb-3 border-primary border-opacity-25">
+                            <div class="card-header bg-primary bg-opacity-10">
+                                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Basic Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Stock Quantity:</strong> <span id="medicineDetailQuantity" class="fw-bold">...</span></p>
+                                        <p><strong>Reorder Level:</strong> <span id="medicineDetailReorder">...</span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Unit Price:</strong> <span id="medicineDetailPrice" class="fw-bold">...</span></p>
+                                        <p><strong>Last Updated:</strong> <span id="medicineDetailUpdated">...</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3 border-primary border-opacity-25">
+                            <div class="card-header bg-primary bg-opacity-10">
+                                <h6 class="mb-0"><i class="fas fa-align-left me-2"></i>Description</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="medicineDetailDescription">No description available</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary edit-from-detail" data-id="">
+                    <i class="fas fa-edit me-2"></i>Edit Medicine
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Custom styling for medicine cards */
+    .medicine-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 0.5rem;
+    }
+    
+    .medicine-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(26, 115, 232, 0.15);
+    }
+    
+    .card-img-top {
+        border-top-left-radius: 0.5rem !important;
+        border-top-right-radius: 0.5rem !important;
+    }
+    
+    /* Stock status indicators */
+    .bg-danger {
+        background-color: #dc3545 !important;
+    }
+    
+    .bg-success {
+        background-color: #28a745 !important;
+    }
+    
+    /* Pagination styling */
+    .page-item.active .page-link {
+        background-color: #1a73e8;
+        border-color: #1a73e8;
+    }
+    
+    .page-link {
+        color: #1a73e8;
+    }
+    
+    /* Search box styling */
+    #medicineSearch:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 0.25rem rgba(26, 115, 232, 0.25);
+    }
+</style>
+
+<!-- Add this JavaScript at the bottom of your template -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality with AJAX
+    const searchInput = document.getElementById('medicineSearch');
+    const searchButton = document.getElementById('searchButton');
+    const medicineCardsContainer = document.getElementById('medicineCardsContainer');
+    let searchTimeout;
+
+    function performSearch() {
+        const searchTerm = searchInput.value.trim();
+        
+        // Only search if at least 2 characters are entered
+        if (searchTerm.length >= 2) {
+            // Show loading indicator
+            medicineCardsContainer.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i></div>';
+            
+            // Make AJAX request
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `?search=${encodeURIComponent(searchTerm)}`, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    medicineCardsContainer.innerHTML = response.html;
+                    
+                    // Update URL without reloading the page
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('search', searchTerm);
+                    window.history.pushState({ path: newUrl.href }, '', newUrl.href);
+                    
+                    // Re-attach event listeners to new elements
+                    attachEventListeners();
+                } else {
+                    medicineCardsContainer.innerHTML = '<div class="text-center py-5"><i class="fas fa-exclamation-triangle fa-2x text-danger"></i><p class="text-muted mt-2">Error loading results</p></div>';
+                }
+            };
+            
+            xhr.onerror = function() {
+                medicineCardsContainer.innerHTML = '<div class="text-center py-5"><i class="fas fa-exclamation-triangle fa-2x text-danger"></i><p class="text-muted mt-2">Network error</p></div>';
+            };
+            
+            xhr.send();
+        } else if (searchTerm.length === 0) {
+            // If search is cleared, reload the original page
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', window.location.pathname, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    medicineCardsContainer.innerHTML = response.html;
+                    
+                    // Update URL to remove search param
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.delete('search');
+                    window.history.pushState({ path: newUrl.href }, '', newUrl.href);
+                    
+                    // Re-attach event listeners to new elements
+                    attachEventListeners();
+                }
+            };
+            
+            xhr.send();
+        }
+    }
+
+    // Search event listeners
+    if (searchButton) {
+        searchButton.addEventListener('click', performSearch);
+    }
+
+    if (searchInput) {
+        // Search on Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // Search as you type (with debounce)
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            if (searchInput.value.trim().length >= 2) {
+                searchTimeout = setTimeout(performSearch, 500);
+            } else if (searchInput.value.trim().length === 0) {
+                // Clear search immediately when input is empty
+                performSearch();
+            }
+        });
+    }
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        
+        if (searchParam !== null && searchInput) {
+            searchInput.value = searchParam;
+            performSearch();
+        } else if (searchInput && searchInput.value !== '') {
+            searchInput.value = '';
+            performSearch();
+        }
+    });
+
+    // Function to properly close modals and remove backdrop
+    function closeModalProperly(modalId) {
+        const modalElement = document.getElementById(modalId);
+        if (!modalElement) return;
+        
+        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+        
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+        
+        // Force remove backdrop after a short delay
+        setTimeout(() => {
+            // Remove any lingering backdrop
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach(backdrop => backdrop.remove());
+            
+            // Remove modal-open class from body
+            document.body.classList.remove('modal-open');
+            
+            // Reset body padding if it was modified
+            document.body.style.paddingRight = '';
+            document.body.style.overflow = '';
+        }, 300);
+    }
+
+    // Helper function to get CSRF token from cookies
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Enhanced function to load medicine data and show edit modal
+    function loadMedicineForEdit(medicineId) {
+        console.log('loadMedicineForEdit called with ID:', medicineId);
+        
+        if (!medicineId || medicineId === 'undefined' || medicineId === 'null') {
+            console.error('Invalid medicine ID:', medicineId);
+            alert("Invalid medicine ID. Please try again.");
+            return;
+        }
+
+        fetch(`/ajax/medicine/${medicineId}/`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Failed to fetch data");
+            return response.json();
+        })
+        .then(data => {
+            console.log('Fetched medicine data:', data);
+
+            // Fill the edit form with data
+            const editMedicineIdField = document.getElementById('editMedicineId');
+            if (editMedicineIdField) {
+                editMedicineIdField.value = medicineId;
+                console.log('Set editMedicineId field to:', medicineId);
+            } else {
+                console.error('editMedicineId field not found in DOM');
+                alert("Critical error: Medicine ID field not found in edit form.");
+                return;
+            }
+
+            // Fill other fields
+            const fields = [
+                { id: 'editMedicineName', value: data.name || '' },
+                { id: 'editMedicineManufacturer', value: data.manufacturer || '' },
+                { id: 'editMedicineBatch', value: data.batch_number || '' },
+                { id: 'editMedicineExpiry', value: data.expiry_date || '' },
+                { id: 'editMedicineQuantity', value: data.quantity_in_stock || data.quantity || '' },
+                { id: 'editMedicineReorder', value: data.reorder_level || '' },
+                { id: 'editMedicinePrice', value: data.unit_price || data.price || '' },
+                { id: 'editMedicineDescription', value: data.description || '' }
+            ];
+
+            fields.forEach(field => {
+                const element = document.getElementById(field.id);
+                if (element) {
+                    element.value = field.value;
+                    console.log(`Set ${field.id} to:`, field.value);
+                } else {
+                    console.warn(`Field ${field.id} not found in form`);
+                }
+            });
+
+            // Show the edit modal
+            const editModal = new bootstrap.Modal(document.getElementById('editMedicineModal'));
+            editModal.show();
+        })
+        .catch(error => {
+            console.error('Error loading medicine data:', error);
+            alert("Could not load medicine data for editing. Please try again.");
+        });
+    }
+
+    // Function to attach event listeners (used after AJAX updates)
+    function attachEventListeners() {
+        // Handle medicine detail modal
+        const detailButtons = document.querySelectorAll('.view-medicine');
+        
+        detailButtons.forEach(button => {
+            // Remove existing listeners to prevent duplicates
+            button.replaceWith(button.cloneNode(true));
+        });
+
+        // Re-select after cloning
+        document.querySelectorAll('.view-medicine').forEach(button => {
+            button.addEventListener('click', function () {
+                const medicineId = this.dataset.id;
+
+                fetch(`/ajax/medicine/${medicineId}/`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error("Failed to fetch data");
+                    return response.json();
+                })
+                .then(data => {
+                    // Update modal with data
+                    document.getElementById('medicineDetailName').innerText = data.name;
+                    document.getElementById('medicineDetailCategory').innerText = data.category || 'No category';
+                    document.getElementById('medicineDetailManufacturer').innerText = data.manufacturer || 'N/A';
+                    document.getElementById('medicineDetailBatch').innerText = data.batch_number || 'N/A';
+                    document.getElementById('medicineDetailExpiry').innerText = data.expiry_date || 'N/A';
+                    document.getElementById('medicineDetailQuantity').innerText = data.quantity_in_stock || data.quantity || '0';
+                    document.getElementById('medicineDetailReorder').innerText = data.reorder_level || 'N/A';
+                    document.getElementById('medicineDetailPrice').innerText = `KSh ${data.unit_price || data.price || '0'}`;
+                    document.getElementById('medicineDetailUpdated').innerText = data.last_updated || 'N/A';
+                    document.getElementById('medicineDetailDescription').innerText = data.description || 'No description available';
+
+                    // Handle image display
+                    const img = document.getElementById('medicineDetailImage');
+                    const defaultIcon = document.getElementById('medicineDefaultIcon');
+                    if (data.image_url) {
+                        img.src = data.image_url;
+                        img.style.display = 'block';
+                        defaultIcon.style.display = 'none';
+                    } else {
+                        img.style.display = 'none';
+                        defaultIcon.style.display = 'block';
+                    }
+
+                    // Set the medicine ID for the edit button in the detail modal
+                    const editFromDetailBtn = document.querySelector('.edit-from-detail');
+                    if (editFromDetailBtn) {
+                        editFromDetailBtn.setAttribute('data-id', medicineId);
+                    }
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert("Could not load medicine details.");
+                });
+            });
+        });
+
+        // Handle edit buttons from the medicine cards
+        document.querySelectorAll('.edit-medicine').forEach(button => {
+            button.replaceWith(button.cloneNode(true));
+        });
+
+        document.querySelectorAll('.edit-medicine').forEach(button => {
+            button.addEventListener('click', function () {
+                const medicineId = this.dataset.id;
+                loadMedicineForEdit(medicineId);
+            });
+        });
+    }
+
+    // Initial attachment of event listeners
+    attachEventListeners();
+
+    // Handle edit button from detail modal
+    const editFromDetailBtn = document.querySelector('.edit-from-detail');
+    if (editFromDetailBtn) {
+        editFromDetailBtn.addEventListener('click', function () {
+            const medicineId = this.getAttribute('data-id');
+            if (medicineId) {
+                // Properly close the detail modal first
+                closeModalProperly('medicineDetailModal');
+                
+                // Wait for modal to close completely before opening edit modal
+                setTimeout(() => {
+                    loadMedicineForEdit(medicineId);
+                }, 500);
+            }
+        });
+    }
+
+    // Handle edit form submission
+    const editForm = document.getElementById('editMedicineForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            const medicineIdField = document.getElementById('editMedicineId');
+            console.log('Medicine ID field element:', medicineIdField);
+            
+            if (!medicineIdField) {
+                console.error('editMedicineId field not found in DOM');
+                alert("Medicine ID field not found. Please check your HTML form.");
+                return;
+            }
+            
+            const medicineId = medicineIdField.value;
+            console.log('Medicine ID value:', medicineId);
+            
+            if (!medicineId || medicineId === 'undefined' || medicineId === 'null' || medicineId === '') {
+                console.error('Medicine ID is missing or invalid:', medicineId);
+                alert(`Medicine ID is missing or invalid: "${medicineId}". Please close the form and try again.`);
+                return;
+            }
+
+            // Collect form data as JSON
+            const jsonData = {
+                name: document.getElementById('editMedicineName')?.value || '',
+                manufacturer: document.getElementById('editMedicineManufacturer')?.value || '',
+                batch_number: document.getElementById('editMedicineBatch')?.value || '',
+                expiry_date: document.getElementById('editMedicineExpiry')?.value || '',
+                quantity: document.getElementById('editMedicineQuantity')?.value || '',
+                reorder_level: document.getElementById('editMedicineReorder')?.value || '',
+                price: document.getElementById('editMedicinePrice')?.value || '',
+                description: document.getElementById('editMedicineDescription')?.value || ''
+            };
+
+            const url = `/ajax/update-medicine/${medicineId}/`;
+            console.log('Making request to URL:', url);
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                             document.querySelector('meta[name=csrf-token]')?.getAttribute('content') ||
+                             getCookie('csrftoken') || '';
+
+            fetch(url, {
+                method: 'POST',
+                body: JSON.stringify(jsonData),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    // Properly close the modal using our enhanced function
+                    closeModalProperly('editMedicineModal');
+                    
+                    // Show success message
+                    alert("Medicine updated successfully!");
+                    
+                    // Reload the page to show updated data
+                    window.location.reload();
+                } else {
+                    alert("Error updating medicine: " + (data.message || "Unknown error"));
+                }
+            })
+            .catch(error => {
+                console.error('Error updating medicine:', error);
+                alert("Could not update medicine. Please check the console for details and try again.");
+            });
+        });
+    }
+
+    // Add event listeners for modal close buttons to ensure proper cleanup
+    const editModalCloseButtons = document.querySelectorAll('#editMedicineModal .btn-close, #editMedicineModal [data-bs-dismiss="modal"]');
+    editModalCloseButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            setTimeout(() => {
+                closeModalProperly('editMedicineModal');
+            }, 100);
+        });
+    });
+
+    const detailModalCloseButtons = document.querySelectorAll('#medicineDetailModal .btn-close, #medicineDetailModal [data-bs-dismiss="modal"]');
+    detailModalCloseButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            setTimeout(() => {
+                closeModalProperly('medicineDetailModal');
+            }, 100);
+        });
+    });
+
+    // Global event listener for any modal backdrop clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal-backdrop')) {
+            // Force remove all backdrops and reset body
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.paddingRight = '';
+                document.body.style.overflow = '';
+            }, 100);
+        }
+    });
+
+    // Delete medicine functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-medicine')) {
+            const button = e.target.closest('.delete-medicine');
+            const deleteUrl = button.dataset.url;
+            
+            if (confirm('Are you sure you want to delete this medicine?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = deleteUrl;
+                
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                if (csrfToken) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    });
+
+    // Local search functionality (for when AJAX search is not available)
+    const localSearchInput = document.getElementById('medicineSearch');
+    if (localSearchInput && !medicineCardsContainer) {
+        localSearchInput.addEventListener('input', function () {
+            const searchTerm = this.value.toLowerCase();
+            const medicineCards = document.querySelectorAll('.medicine-card');
+            
+            medicineCards.forEach(card => {
+                const medicineName = card.querySelector('.card-title')?.textContent.toLowerCase() || '';
+                const category = card.querySelector('.text-muted')?.textContent.toLowerCase() || '';
+                const manufacturer = card.querySelector('.manufacturer')?.textContent.toLowerCase() || '';
+                
+                if (medicineName.includes(searchTerm) || 
+                    category.includes(searchTerm) || 
+                    manufacturer.includes(searchTerm)) {
+                    card.closest('.col').style.display = 'block';
+                } else {
+                    card.closest('.col').style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // Handle modal events for proper cleanup
+    const editModal = document.getElementById('editMedicineModal');
+    const detailModal = document.getElementById('medicineDetailModal');
+
+    if (editModal) {
+        editModal.addEventListener('hidden.bs.modal', function () {
+            // Clean up any remaining backdrops
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.paddingRight = '';
+                document.body.style.overflow = '';
+            }, 100);
+        });
+    }
+
+    if (detailModal) {
+        detailModal.addEventListener('hidden.bs.modal', function () {
+            // Clean up any remaining backdrops
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.paddingRight = '';
+                document.body.style.overflow = '';
+            }, 100);
+        });
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Escape key to close modals
+        if (e.key === 'Escape') {
+            const openModals = document.querySelectorAll('.modal.show');
+            openModals.forEach(modal => {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            });
+        }
+    });
+
+    console.log('Medicine management JavaScript loaded successfully');
+});
+</script>
+
+
+
+{% endblock %}

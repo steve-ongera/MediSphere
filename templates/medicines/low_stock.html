@@ -1,0 +1,115 @@
+{% extends 'base/base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block title %}Low Stock Medicines{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-exclamation-triangle me-2"></i>Low Stock Medicines
+        </h1>
+        <a href="{% url 'medicine_stock_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to All Medicines
+        </a>
+    </div>
+
+    <!-- Critical Stock Section -->
+    {% if critical_medicines %}
+    <div class="card shadow mb-4 border-left-danger">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center bg-danger text-white">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-exclamation-circle me-1"></i>
+                Critical Stock ({{ critical_count }})
+            </h6>
+            <span>Stock below 50% of reorder level</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Medicine</th>
+                            <th>Current Stock</th>
+                            <th>Reorder Level</th>
+                            <th>Deficit</th>
+                            <th>Category</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicine in critical_medicines %}
+                        <tr class="table-danger">
+                            <td>{{ medicine.name }}</td>
+                            <td>{{ medicine.quantity_in_stock }}</td>
+                            <td>{{ medicine.reorder_level }}</td>
+                            <td>{{ medicine.reorder_level|subtract:medicine.quantity_in_stock }}</td>
+                            <td>{{ medicine.category|default:"-" }}</td>
+                            <td>
+                                <a href="{% url 'medicine_detail' medicine.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Warning Stock Section -->
+    {% if warning_medicines %}
+    <div class="card shadow mb-4 border-left-warning">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center bg-warning text-dark">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                Low Stock Warning ({{ warning_count }})
+            </h6>
+            <span>Stock below reorder level</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Medicine</th>
+                            <th>Current Stock</th>
+                            <th>Reorder Level</th>
+                            <th>Deficit</th>
+                            <th>Category</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicine in warning_medicines %}
+                        <tr class="table-warning">
+                            <td>{{ medicine.name }}</td>
+                            <td>{{ medicine.quantity_in_stock }}</td>
+                            <td>{{ medicine.reorder_level }}</td>
+                            <td>{{ medicine.reorder_level|subtract:medicine.quantity_in_stock }}</td>
+                            <td>{{ medicine.category|default:"-" }}</td>
+                            <td>
+                                <a href="{% url 'medicine_detail' medicine.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not critical_medicines and not warning_medicines %}
+    <div class="alert alert-success">
+        <i class="fas fa-check-circle me-2"></i>
+        No medicines are currently low on stock. All inventory levels are sufficient.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ category.name }} Medicines{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-tag me-2"></i>{{ category.name }} Medicines
+        </h1>
+        <a href="{% url 'medicine_category_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Categories
+        </a>
+    </div>
+
+    <!-- Category Summary -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-left-primary">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-info-circle text-primary me-2"></i>Category Information
+                    </h5>
+                    {% if category.description %}
+                    <p class="card-text">{{ category.description }}</p>
+                    {% else %}
+                    <p class="card-text text-muted">No description provided for this category.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-left-info">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-chart-pie text-info me-2"></i>Stock Status
+                    </h5>
+                    <div class="mb-2">
+                        <span class="font-weight-bold">{{ total_medicines }}</span> medicines in this category
+                    </div>
+                    <div class="progress mb-2" style="height: 7px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {% widthratio sufficient_count total_medicines 100 %}%"></div>
+                        <div class="progress-bar bg-warning" role="progressbar" 
+                             style="width: {% widthratio warning_count total_medicines 100 %}%"></div>
+                        <div class="progress-bar bg-danger" role="progressbar" 
+                             style="width: {% widthratio critical_count total_medicines 100 %}%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small">
+                        <span class="text-success">
+                            <i class="fas fa-check-circle"></i> {{ sufficient_count }} Good
+                        </span>
+                        <span class="text-warning">
+                            <i class="fas fa-exclamation-triangle"></i> {{ warning_count }} Low
+                        </span>
+                        <span class="text-danger">
+                            <i class="fas fa-exclamation-circle"></i> {{ critical_count }} Critical
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Medicines Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-pills me-1"></i> {{ category.name }} Medicines
+            </h6>
+            <span class="badge bg-primary">{{ medicines.count }} items</span>
+        </div>
+        <div class="card-body">
+            {% if medicines %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Medicine Name</th>
+                            <th>Stock Level</th>
+                            <th>Unit Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medicine in medicines %}
+                        <tr class="{% if medicine.quantity_in_stock <= medicine.reorder_level|divisibleby:2 %}table-danger
+                                  {% elif medicine.is_low_stock %}table-warning
+                                  {% else %}table-success{% endif %}">
+                            <td>{{ medicine.name }}</td>
+                            <td>
+                                {{ medicine.quantity_in_stock }} 
+                                <small class="text-muted">/ {{ medicine.reorder_level }} reorder</small>
+                            </td>
+                            <td>KSh {{ medicine.unit_price }}</td>
+                            <td>
+                                {% if medicine.quantity_in_stock <= medicine.reorder_level|divisibleby:2 %}
+                                <span class="badge bg-danger">Critical</span>
+                                {% elif medicine.is_low_stock %}
+                                <span class="badge bg-warning text-dark">Low Stock</span>
+                                {% else %}
+                                <span class="badge bg-success">In Stock</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'medicine_detail' medicine.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-pills fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No medicines found in this category</h5>
+                <a href="#" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Add Medicine
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

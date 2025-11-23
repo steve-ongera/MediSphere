@@ -1,0 +1,137 @@
+{% extends 'base/base.html' %}
+{% load custom_filters %}
+{% load static %}
+
+{% block title %}{{ medicine.name }} Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-pills me-2"></i>{{ medicine.name }} Details
+        </h1>
+        <a href="{% url 'medicine_stock_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Inventory
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Medicine Info -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Medicine Information</h6>
+                    <span class="badge {% if medicine.is_low_stock %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                        {% if medicine.is_low_stock %}Low Stock{% else %}In Stock{% endif %}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Name:</dt>
+                                <dd class="col-sm-8">{{ medicine.name }}</dd>
+
+                                <dt class="col-sm-4">Category:</dt>
+                                <dd class="col-sm-8">{{ medicine.category|default:"-" }}</dd>
+
+                                <dt class="col-sm-4">Manufacturer:</dt>
+                                <dd class="col-sm-8">{{ medicine.manufacturer|default:"-" }}</dd>
+
+                                <dt class="col-sm-4">Batch Number:</dt>
+                                <dd class="col-sm-8">{{ medicine.batch_number|default:"-" }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Current Stock:</dt>
+                                <dd class="col-sm-8">
+                                    {{ medicine.quantity_in_stock }}
+                                    <small class="text-muted">(Reorder at {{ medicine.reorder_level }})</small>
+                                </dd>
+
+                                <dt class="col-sm-4">Unit Price:</dt>
+                                <dd class="col-sm-8">KSh {{ medicine.unit_price }}</dd>
+
+                                <dt class="col-sm-4">Expiry Date:</dt>
+                                <dd class="col-sm-8">
+                                    {% if medicine.expiry_date %}
+                                        {{ medicine.expiry_date|date:"M d, Y" }}
+                                        {% if medicine.is_expired %}
+                                            <span class="badge bg-danger ms-2">Expired</span>
+                                        {% endif %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    {% if medicine.description %}
+                    <div class="mt-4">
+                        <h6>Description</h6>
+                        <p class="text-muted">{{ medicine.description }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Status & Image -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Stock Status</h6>
+                </div>
+                <div class="card-body text-center">
+                    {% if medicine.image %}
+                    <img src="{{ medicine.image.url }}" alt="{{ medicine.name }}" class="img-fluid mb-4" style="max-height: 200px;">
+                    {% else %}
+                    <div class="bg-light rounded p-5 mb-4 text-muted">
+                        <i class="fas fa-pills fa-3x"></i>
+                        <p class="mt-2 mb-0">No image available</p>
+                    </div>
+                    {% endif %}
+
+                    <h4 class="mb-3">
+                        {% if medicine.quantity_in_stock <= medicine.reorder_level|divisibleby:2 %}
+                            <span class="text-danger">Critical Stock</span>
+                        {% elif medicine.is_low_stock %}
+                            <span class="text-warning">Low Stock</span>
+                        {% else %}
+                            <span class="text-success">Sufficient Stock</span>
+                        {% endif %}
+                    </h4>
+
+                    <div class="progress mb-4">
+                        {% widthratio medicine.quantity_in_stock medicine.reorder_level 100 as stock_percent %}
+                        <div class="progress-bar 
+                            {% if medicine.quantity_in_stock <= medicine.reorder_level|divisibleby:2 %}bg-danger
+                            {% elif medicine.is_low_stock %}bg-warning
+                            {% else %}bg-success{% endif %}" 
+                            role="progressbar" 
+                            style="width: {{ stock_percent }}%" 
+                            aria-valuenow="{{ stock_percent }}" 
+                            aria-valuemin="0" 
+                            aria-valuemax="100">
+                        </div>
+                    </div>
+
+                    <p class="mb-1">
+                        <strong>{{ medicine.quantity_in_stock }}</strong> units in stock
+                    </p>
+                    <p class="mb-1">
+                        <strong>{{ medicine.reorder_level }}</strong> units reorder level
+                    </p>
+                    {% if medicine.is_low_stock %}
+                    <p class="mb-0 text-danger">
+                        <strong>{{ medicine.reorder_level|subtract:medicine.quantity_in_stock }}</strong> units below reorder level
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

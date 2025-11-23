@@ -1,0 +1,620 @@
+{% extends "base/base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center" style="background-color: #E61D2B !important;">
+      <h5 style="color:white;" class="mb-0 fw-bold">
+        <i class="bi bi-cart-plus me-2"></i>Record New Sale
+      </h5>
+      <a href="#" class="btn btn-light btn-sm rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to Sales
+      </a>
+    </div>
+    
+    <div class="card-body p-4">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show mb-4" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+      
+      <form method="post" id="sales-form" novalidate>
+        {% csrf_token %}
+        
+        <!-- Customer Selection Section -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold">Customer Information</h6>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="existingCustomerToggle">
+              <label class="form-check-label" for="existingCustomerToggle">Existing Customer</label>
+            </div>
+          </div>
+          <div class="card-body p-3">
+            <!-- Existing Customer Selector (hidden by default) -->
+            <div id="existingCustomerSection" class="mb-3" style="display: none;">
+              <label class="form-label fw-medium">Select Customer</label>
+              <select id="customer_select" name="customer_select" class="form-select border-danger">
+                <option value="">-- Select Existing Customer --</option>
+                {% for customer in customers_data %}
+                  <option value="{{ customer.id }}">{{ customer.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- New Customer Form -->
+            <div id="newCustomerSection">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="{{ customer_form.name.id_for_label }}" class="form-label fw-medium">{{ customer_form.name.label }}</label>
+                  {{ customer_form.name }}
+                  {% if customer_form.name.errors %}
+                    <div class="invalid-feedback d-block">{{ customer_form.name.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label for="{{ customer_form.customer_type.id_for_label }}" class="form-label fw-medium">{{ customer_form.customer_type.label }}</label>
+                  {{ customer_form.customer_type }}
+                  {% if customer_form.customer_type.errors %}
+                    <div class="invalid-feedback d-block">{{ customer_form.customer_type.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label for="{{ customer_form.contact_person.id_for_label }}" class="form-label fw-medium">{{ customer_form.contact_person.label }}</label>
+                  {{ customer_form.contact_person }}
+                  {% if customer_form.contact_person.errors %}
+                    <div class="invalid-feedback d-block">{{ customer_form.contact_person.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label for="{{ customer_form.email.id_for_label }}" class="form-label fw-medium">{{ customer_form.email.label }}</label>
+                  {{ customer_form.email }}
+                  {% if customer_form.email.errors %}
+                    <div class="invalid-feedback d-block">{{ customer_form.email.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label for="{{ customer_form.phone.id_for_label }}" class="form-label fw-medium">{{ customer_form.phone.label }}</label>
+                  {{ customer_form.phone }}
+                  {% if customer_form.phone.errors %}
+                    <div class="invalid-feedback d-block">{{ customer_form.phone.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label for="{{ customer_form.payment_terms.id_for_label }}" class="form-label fw-medium">{{ customer_form.payment_terms.label }}</label>
+                  {{ customer_form.payment_terms }}
+                  {% if customer_form.payment_terms.errors %}
+                    <div class="invalid-feedback d-block">{{ customer_form.payment_terms.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label for="{{ customer_form.credit_limit.id_for_label }}" class="form-label fw-medium">{{ customer_form.credit_limit.label }}</label>
+                  {{ customer_form.credit_limit }}
+                  {% if customer_form.credit_limit.errors %}
+                    <div class="invalid-feedback d-block">{{ customer_form.credit_limit.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label for="{{ customer_form.address.id_for_label }}" class="form-label fw-medium">{{ customer_form.address.label }}</label>
+                  {{ customer_form.address }}
+                  {% if customer_form.address.errors %}
+                    <div class="invalid-feedback d-block">{{ customer_form.address.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sales Order Information -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-light">
+            <h6 class="mb-0 fw-bold">Order Information</h6>
+          </div>
+          <div class="card-body p-3">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label for="{{ sales_order_form.order_number.id_for_label }}" class="form-label fw-medium">{{ sales_order_form.order_number.label }}</label>
+                {{ sales_order_form.order_number }}
+                {% if sales_order_form.order_number.errors %}
+                  <div class="invalid-feedback d-block">{{ sales_order_form.order_number.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-4">
+                <label for="{{ sales_order_form.order_date.id_for_label }}" class="form-label fw-medium">{{ sales_order_form.order_date.label }}</label>
+                {{ sales_order_form.order_date }}
+                {% if sales_order_form.order_date.errors %}
+                  <div class="invalid-feedback d-block">{{ sales_order_form.order_date.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-4">
+                <label for="{{ sales_order_form.sales_representative.id_for_label }}" class="form-label fw-medium">{{ sales_order_form.sales_representative.label }}</label>
+                {{ sales_order_form.sales_representative }}
+                {% if sales_order_form.sales_representative.errors %}
+                  <div class="invalid-feedback d-block">{{ sales_order_form.sales_representative.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ sales_order_form.shipping_address.id_for_label }}" class="form-label fw-medium">{{ sales_order_form.shipping_address.label }}</label>
+                {{ sales_order_form.shipping_address }}
+                {% if sales_order_form.shipping_address.errors %}
+                  <div class="invalid-feedback d-block">{{ sales_order_form.shipping_address.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ sales_order_form.billing_address.id_for_label }}" class="form-label fw-medium">{{ sales_order_form.billing_address.label }}</label>
+                {{ sales_order_form.billing_address }}
+                {% if sales_order_form.billing_address.errors %}
+                  <div class="invalid-feedback d-block">{{ sales_order_form.billing_address.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ sales_order_form.delivery_date.id_for_label }}" class="form-label fw-medium">{{ sales_order_form.delivery_date.label }}</label>
+                {{ sales_order_form.delivery_date }}
+                {% if sales_order_form.delivery_date.errors %}
+                  <div class="invalid-feedback d-block">{{ sales_order_form.delivery_date.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Order Items -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold">Order Products</h6>
+            <button type="button" id="add-item-btn" class="btn btn-sm btn-outline-danger rounded-pill px-3" style="border-color: #E61D2B; color: #E61D2B;">
+              <i class="bi bi-plus-lg me-1"></i> Add Product
+            </button>
+          </div>
+          <div class="card-body p-3">
+            {{ sales_order_item_formset.management_form }}
+            
+            <div class="table-responsive">
+              <table class="table">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 40%;">Product</th>
+                    <th style="width: 15%;">Quantity</th>
+                    <th style="width: 15%;">Unit Price</th>
+                    <th style="width: 10%;">Discount %</th>
+                    <th style="width: 15%;">Subtotal</th>
+                    <th style="width: 5%;" class="text-center">Remove</th>
+                  </tr>
+                </thead>
+                <tbody id="item-formset">
+                  {% for form in sales_order_item_formset %}
+                    <tr class="item-form">
+                      {% for hidden in form.hidden_fields %}
+                        {{ hidden }}
+                      {% endfor %}
+                      
+                      <td>{{ form.product_variant }}</td>
+                      <td>{{ form.quantity }}</td>
+                      <td>{{ form.unit_price }}</td>
+                      <td>{{ form.discount }}</td>
+                      <td><input type="text" class="form-control border-danger subtotal-display" readonly></td>
+                      <td class="text-center">
+                        {% if form.instance.pk %}
+                          {{ form.DELETE }}
+                        {% else %}
+                          <button type="button" class="btn btn-sm btn-outline-danger remove-item">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+                <tfoot>
+                  <tr class="fw-bold">
+                    <td colspan="4" class="text-end">Total Amount:</td>
+                    <td>
+                      <input type="text" id="total-amount" class="form-control border-danger" readonly>
+                    </td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            
+            {% if sales_order_item_formset.non_form_errors %}
+              <div class="alert alert-danger mt-3">
+                {{ sales_order_item_formset.non_form_errors|join:", " }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <!-- Invoice Information -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-light">
+            <h6 class="mb-0 fw-bold">Invoice Information</h6>
+          </div>
+          <div class="card-body p-3">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="{{ invoice_form.invoice_number.id_for_label }}" class="form-label fw-medium">{{ invoice_form.invoice_number.label }}</label>
+                {{ invoice_form.invoice_number }}
+                {% if invoice_form.invoice_number.errors %}
+                  <div class="invalid-feedback d-block">{{ invoice_form.invoice_number.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ invoice_form.payment_terms.id_for_label }}" class="form-label fw-medium">{{ invoice_form.payment_terms.label }}</label>
+                {{ invoice_form.payment_terms }}
+                {% if invoice_form.payment_terms.errors %}
+                  <div class="invalid-feedback d-block">{{ invoice_form.payment_terms.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ invoice_form.invoice_date.id_for_label }}" class="form-label fw-medium">{{ invoice_form.invoice_date.label }}</label>
+                {{ invoice_form.invoice_date }}
+                {% if invoice_form.invoice_date.errors %}
+                  <div class="invalid-feedback d-block">{{ invoice_form.invoice_date.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ invoice_form.due_date.id_for_label }}" class="form-label fw-medium">{{ invoice_form.due_date.label }}</label>
+                {{ invoice_form.due_date }}
+                {% if invoice_form.due_date.errors %}
+                  <div class="invalid-feedback d-block">{{ invoice_form.due_date.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-danger px-4 rounded-pill" style="background-color: #E61D2B;">
+            <i class="bi bi-save me-2"></i> Save & Create Sale
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Product data from the server
+        const productsData = {{ products_data|safe }};
+        const customersData = {{ customers_data|safe }};
+        
+        // Helper function to format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { 
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2 
+            }).format(amount);
+        }
+        
+        // Function to calculate subtotals and total
+        function calculateTotals() {
+            let totalAmount = 0;
+            
+            document.querySelectorAll('.item-form').forEach(row => {
+                const quantityInput = row.querySelector('[name$="quantity"]');
+                const priceInput = row.querySelector('[name$="unit_price"]');
+                const discountInput = row.querySelector('[name$="discount"]');
+                const subtotalDisplay = row.querySelector('.subtotal-display');
+                
+                if (quantityInput && priceInput && discountInput && subtotalDisplay) {
+                    const quantity = parseFloat(quantityInput.value) || 0;
+                    const price = parseFloat(priceInput.value) || 0;
+                    const discount = parseFloat(discountInput.value) || 0;
+                    
+                    // Calculate subtotal with discount
+                    const subtotal = quantity * price * (1 - discount / 100);
+                    
+                    // Update subtotal display
+                    subtotalDisplay.value = formatCurrency(subtotal);
+                    
+                    // Add to total
+                    totalAmount += subtotal;
+                }
+            });
+            
+            // Update total amount display
+            const totalAmountDisplay = document.getElementById('total-amount');
+            if (totalAmountDisplay) {
+                totalAmountDisplay.value = formatCurrency(totalAmount);
+            }
+        }
+        
+        // Handle existing/new customer toggle
+        const existingCustomerToggle = document.getElementById('existingCustomerToggle');
+        const existingCustomerSection = document.getElementById('existingCustomerSection');
+        const newCustomerSection = document.getElementById('newCustomerSection');
+        const customerFieldInputs = newCustomerSection.querySelectorAll('input, select, textarea');
+        
+        if (existingCustomerToggle && existingCustomerSection && newCustomerSection) {
+            existingCustomerToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    existingCustomerSection.style.display = 'block';
+                    newCustomerSection.style.display = 'none';
+                    
+                    // Disable all inputs in the customer form when using existing customer
+                    customerFieldInputs.forEach(input => {
+                        input.disabled = true;
+                    });
+                } else {
+                    existingCustomerSection.style.display = 'none';
+                    newCustomerSection.style.display = 'block';
+                    
+                    // Re-enable all inputs in the customer form
+                    customerFieldInputs.forEach(input => {
+                        input.disabled = false;
+                    });
+                }
+            });
+        }
+        
+        // Customer select change handler
+        const customerSelect = document.getElementById('customer_select');
+        if (customerSelect) {
+            customerSelect.addEventListener('change', function() {
+                const customerId = this.value;
+                if (customerId) {
+                    const customer = customersData.find(c => c.id == customerId);
+                    if (customer) {
+                        // Auto-fill billing and shipping address if customer is selected
+                        const billingAddressInput = document.querySelector('[name$="billing_address"]');
+                        const shippingAddressInput = document.querySelector('[name$="shipping_address"]');
+                        const paymentTermsInput = document.querySelector('[name="invoice-payment_terms"]');
+                        
+                        if (billingAddressInput) {
+                            billingAddressInput.value = customer.address || '';
+                        }
+                        
+                        if (shippingAddressInput) {
+                            shippingAddressInput.value = customer.address || '';
+                        }
+                        
+                        if (paymentTermsInput && customer.payment_terms) {
+                            paymentTermsInput.value = customer.payment_terms;
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Product variant change handler
+        function setupProductVariantHandlers() {
+            document.querySelectorAll('[name$="product_variant"]').forEach(select => {
+                select.addEventListener('change', function() {
+                    const productId = this.value;
+                    if (productId) {
+                        const product = productsData.find(p => p.id == productId);
+                        if (product) {
+                            // Get the row this select belongs to
+                            const row = this.closest('.item-form');
+                            if (row) {
+                                // Set the unit price from the product data
+                                const priceInput = row.querySelector('[name$="unit_price"]');
+                                if (priceInput && product.price) {
+                                    priceInput.value = product.price;
+                                }
+                                
+                                // Recalculate totals after setting price
+                                calculateTotals();
+                            }
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Initialize handlers for existing product selects
+        setupProductVariantHandlers();
+        
+        // Add item button handler
+        const addItemBtn = document.getElementById('add-item-btn');
+        const itemFormset = document.getElementById('item-formset');
+        
+        if (addItemBtn && itemFormset) {
+            addItemBtn.addEventListener('click', function() {
+                // Get the current form count
+                const totalFormsInput = document.querySelector('[name$="TOTAL_FORMS"]');
+                if (totalFormsInput) {
+                    const formCount = parseInt(totalFormsInput.value);
+                    
+                    // Clone the first form
+                    const templateRow = itemFormset.querySelector('.item-form');
+                    if (templateRow) {
+                        const newRow = templateRow.cloneNode(true);
+                        
+                        // Update IDs and names with the new form count
+                        newRow.querySelectorAll('input, select').forEach(input => {
+                            const name = input.getAttribute('name');
+                            if (name) {
+                                input.setAttribute('name', name.replace(/\d+/, formCount));
+                            }
+                            
+                            const id = input.getAttribute('id');
+                            if (id) {
+                                input.setAttribute('id', id.replace(/\d+/, formCount));
+                            }
+                            
+                            // Clear values in the new row
+                            if (!input.classList.contains('subtotal-display')) {
+                                input.value = '';
+                            }
+                        });
+                        
+                        // Set up event listeners for the new row
+                        const removeBtn = newRow.querySelector('.remove-item');
+                        if (removeBtn) {
+                            removeBtn.addEventListener('click', function() {
+                                newRow.remove();
+                                updateFormIndices();
+                                calculateTotals();
+                            });
+                        }
+                        
+                        // Add quantity/price/discount change listeners
+                        newRow.querySelectorAll('[name$="quantity"], [name$="unit_price"], [name$="discount"]').forEach(input => {
+                            input.addEventListener('input', calculateTotals);
+                        });
+                        
+                        // Add product variant change listener
+                        const productSelect = newRow.querySelector('[name$="product_variant"]');
+                        if (productSelect) {
+                            productSelect.addEventListener('change', function() {
+                                const productId = this.value;
+                                if (productId) {
+                                    const product = productsData.find(p => p.id == productId);
+                                    if (product) {
+                                        const priceInput = newRow.querySelector('[name$="unit_price"]');
+                                        if (priceInput && product.price) {
+                                            priceInput.value = product.price;
+                                            calculateTotals();
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Add the new row to the formset
+                        itemFormset.appendChild(newRow);
+                        
+                        // Update the total forms count
+                        totalFormsInput.value = formCount + 1;
+                        
+                        // Recalculate totals
+                        calculateTotals();
+                    }
+                }
+            });
+        }
+        
+        // Function to update form indices after removing a row
+        function updateFormIndices() {
+            const totalFormsInput = document.querySelector('[name$="TOTAL_FORMS"]');
+            if (totalFormsInput) {
+                const rows = itemFormset.querySelectorAll('.item-form');
+                totalFormsInput.value = rows.length;
+                
+                // Update the indices for all remaining rows
+                rows.forEach((row, index) => {
+                    row.querySelectorAll('input, select').forEach(input => {
+                        const name = input.getAttribute('name');
+                        if (name) {
+                            input.setAttribute('name', name.replace(/\d+/, index));
+                        }
+                        
+                        const id = input.getAttribute('id');
+                        if (id) {
+                            input.setAttribute('id', id.replace(/\d+/, index));
+                        }
+                    });
+                });
+            }
+        }
+        
+        // Set up remove button handlers for existing rows
+        document.querySelectorAll('.remove-item').forEach(button => {
+            button.addEventListener('click', function() {
+                const row = this.closest('.item-form');
+                if (row) {
+                    row.remove();
+                    updateFormIndices();
+                    calculateTotals();
+                }
+            });
+        });
+        
+        // Add input event listeners for quantity, price, and discount fields
+        document.querySelectorAll('[name$="quantity"], [name$="unit_price"], [name$="discount"]').forEach(input => {
+            input.addEventListener('input', calculateTotals);
+        });
+        
+        // Initial calculation of totals
+        calculateTotals();
+        
+        // Same shipping and billing address toggle
+        const sameAddressToggle = document.getElementById('same-address-toggle');
+        if (sameAddressToggle) {
+            sameAddressToggle.addEventListener('change', function() {
+                const billingAddressInput = document.querySelector('[name$="billing_address"]');
+                const shippingAddressInput = document.querySelector('[name$="shipping_address"]');
+                
+                if (this.checked && billingAddressInput && shippingAddressInput) {
+                    shippingAddressInput.value = billingAddressInput.value;
+                    shippingAddressInput.disabled = true;
+                } else if (shippingAddressInput) {
+                    shippingAddressInput.disabled = false;
+                }
+            });
+        }
+        
+        // Copy customer address to billing/shipping when creating new customer
+        const customerAddressInput = document.querySelector('[name$="address"]');
+        if (customerAddressInput) {
+            customerAddressInput.addEventListener('input', function() {
+                if (!existingCustomerToggle.checked) {
+                    const billingAddressInput = document.querySelector('[name$="billing_address"]');
+                    const shippingAddressInput = document.querySelector('[name$="shipping_address"]');
+                    
+                    if (billingAddressInput) {
+                        billingAddressInput.value = this.value;
+                    }
+                    
+                    if (shippingAddressInput && sameAddressToggle && sameAddressToggle.checked) {
+                        shippingAddressInput.value = this.value;
+                    }
+                }
+            });
+        }
+        
+        // Form validation checks before form submission
+        document.getElementById('sales-form').addEventListener('submit', function(event) {
+            const isExistingCustomer = document.getElementById('existingCustomerToggle').checked;
+            let formIsValid = true;
+            
+            // Validate customer section
+            if (isExistingCustomer) {
+                const customerSelect = document.getElementById('customer_select');
+                if (!customerSelect.value) {
+                    formIsValid = false;
+                    alert('Please select an existing customer.');
+                }
+            } else {
+                // Check required fields in customer form
+                const requiredFields = ['name', 'customer_type', 'email', 'phone', 'address'];
+                requiredFields.forEach(field => {
+                    const input = document.querySelector(`[name$="${field}"]`);
+                    if (input && !input.value.trim()) {
+                        formIsValid = false;
+                        input.classList.add('is-invalid');
+                    } else if (input) {
+                        input.classList.remove('is-invalid');
+                    }
+                });
+            }
+            
+            // Check if at least one product is added with valid quantity
+            const hasValidProducts = Array.from(document.querySelectorAll('[name$="product_variant"]'))
+                .some(select => select.value && 
+                      parseFloat(select.closest('.item-form').querySelector('[name$="quantity"]').value) > 0);
+            
+            if (!hasValidProducts) {
+                formIsValid = false;
+                alert('Please add at least one product with a valid quantity.');
+            }
+            
+            if (!formIsValid) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+
+{% endblock %}

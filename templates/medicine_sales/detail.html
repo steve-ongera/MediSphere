@@ -1,0 +1,173 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Sale #{{ sale.id }} Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Clinic Blue Theme */
+    :root {
+        --clinic-primary: #1a6fbf;
+        --clinic-primary-light: rgba(26, 111, 191, 0.1);
+        --clinic-secondary: #0d4e8a;
+    }
+    
+    .detail-card {
+        border-left: 4px solid var(--clinic-primary);
+    }
+    
+    .medicine-card {
+        border: 1px solid #e3e6f0;
+        transition: all 0.3s;
+    }
+    
+    .medicine-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    }
+    
+    .payment-badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+    }
+    
+    .payment-cash { background-color: #28a745; color: white; }
+    .payment-mpesa { background-color: #6f42c1; color: white; }
+    .payment-insurance { background-color: #fd7e14; color: white; }
+    .payment-credit { background-color: #dc3545; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Sale #{{ sale.id }} Details</h1>
+        <a href="{% url 'medicine_sales_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Sales
+        </a>
+    </div>
+
+    <!-- Sale Summary Card -->
+    <div class="card shadow-sm mb-4 detail-card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Sale Information</h5>
+                    <dl class="row">
+                        <dt class="col-sm-4">Sale Date:</dt>
+                        <dd class="col-sm-8">{{ sale.sale_date|date:"M d, Y H:i" }}</dd>
+                        
+                        <dt class="col-sm-4">Payment Method:</dt>
+                        <dd class="col-sm-8">
+                            <span class="payment-badge payment-{{ sale.payment_method|lower }}">
+                                {{ sale.get_payment_method_display }}
+                            </span>
+                            {% if sale.payment_method == 'MPESA' %}
+                                {% if sale.mpesa_code %}
+                                <div class="mt-1">
+                                    <small class="text-muted">M-Pesa Code: {{ sale.mpesa_code }}</small>
+                                </div>
+                                {% endif %}
+                                {% if sale.mpesa_number %}
+                                <div class="mt-1">
+                                    <small class="text-muted">Phone: {{ sale.mpesa_number }}</small>
+                                </div>
+                                {% endif %}
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Total Amount:</dt>
+                        <dd class="col-sm-8">KSh {{ sale.total_amount }}</dd>
+                        
+                        <dt class="col-sm-4">Processed By:</dt>
+                        <dd class="col-sm-8">{{ sale.receptionist.get_full_name }}</dd>
+                    </dl>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="mb-3">Patient Information</h5>
+                    {% if sale.patient %}
+                    <dl class="row">
+                        <dt class="col-sm-4">Patient Name:</dt>
+                        <dd class="col-sm-8">{{ sale.patient.first_name }} {{ sale.patient.last_name }}</dd>
+                        
+                        <dt class="col-sm-4">ID Number:</dt>
+                        <dd class="col-sm-8">{{ sale.patient.id_number }}</dd>
+                        
+                        <dt class="col-sm-4">Phone:</dt>
+                        <dd class="col-sm-8">{{ sale.patient.phone_number }}</dd>
+                        
+                        {% if sale.patient.email %}
+                        <dt class="col-sm-4">Email:</dt>
+                        <dd class="col-sm-8">{{ sale.patient.email }}</dd>
+                        {% endif %}
+                    </dl>
+                    {% else %}
+                    <p class="text-muted">Walk-in customer (no patient record)</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if sale.notes %}
+            <div class="alert alert-light mt-3">
+                <h6><i class="fas fa-info-circle me-2"></i>Notes</h6>
+                <p class="mb-0">{{ sale.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sold Medicines Card -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="fas fa-pills me-2"></i>Sold Medicines
+                <span class="badge bg-primary">{{ sold_medicines.count }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if sold_medicines %}
+            <div class="row g-3">
+                {% for item in sold_medicines %}
+                <div class="col-md-6">
+                    <div class="medicine-card p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="mb-0">{{ item.medicine.name }}</h5>
+                            <span class="badge bg-dark">{{ item.medicine.category }}</span>
+                        </div>
+                        
+                        <div class="row mb-2">
+                            <div class="col-4">
+                                <small class="text-muted">Unit Price</small>
+                                <div>KSh {{ item.unit_price }}</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Quantity</small>
+                                <div>{{ item.quantity }}</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Total</small>
+                                <div class="fw-bold">KSh {{ item.total_price }}</div>
+                            </div>
+                        </div>
+                        
+                        {% if item.medicine.description %}
+                        <div class="small text-muted">
+                            {{ item.medicine.description|truncatewords:15 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-circle fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No medicines recorded for this sale</h5>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

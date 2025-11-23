@@ -1,0 +1,151 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ title }} - Coca-Cola ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0" style="color: #F40009;">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>{{ title }}
+                </h2>
+                <a href="#" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Order
+                </a>
+            </div>
+            <hr class="mt-2 mb-4" style="border-color: #F40009; opacity: 0.2;">
+        </div>
+    </div>
+
+    <!-- Order Summary -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white border-bottom">
+            <h5 class="mb-0" style="color: #F40009;">
+                <i class="fas fa-clipboard-list me-2"></i>Order Summary
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <p class="mb-1"><strong>Order Number:</strong> {{ order.order_number }}</p>
+                    <p class="mb-1"><strong>Customer:</strong> {{ order.customer.name }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p class="mb-1"><strong>Order Date:</strong> {{ order.order_date|date:"M d, Y" }}</p>
+                    <p class="mb-1"><strong>Sales Rep:</strong> {{ order.sales_representative.get_full_name }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p class="mb-1"><strong>Total Amount:</strong> ${{ order.total_amount|floatformat:2 }}</p>
+                    <p class="mb-1"><strong>Payment Status:</strong> 
+                        <span class="badge bg-{% if order.payment_status == 'paid' %}success{% elif order.payment_status == 'partial' %}info{% else %}danger{% endif %}">
+                            {{ order.get_payment_status_display }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Form -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Invoice Number</label>
+                            {{ form.invoice_number }}
+                            {% if form.invoice_number.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.invoice_number.errors|first }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Invoice Date</label>
+                            {{ form.invoice_date }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Payment Terms</label>
+                            {{ form.payment_terms }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Due Date</label>
+                            {{ form.due_date }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            {{ form.status }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Total Amount</label>
+                            {{ form.total_amount }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <button type="submit" name="save" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Create Invoice
+                    </button>
+                    <button type="submit" name="save_and_print" class="btn btn-danger">
+                        <i class="fas fa-print me-1"></i> Create & Print
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-label {
+        font-weight: 500;
+        color: #495057;
+    }
+    
+    select.form-select, input.form-control {
+        border-color: #ced4da;
+    }
+    
+    select.form-select:focus, input.form-control:focus {
+        border-color: #F40009;
+        box-shadow: 0 0 0 0.25rem rgba(244, 0, 9, 0.25);
+    }
+    
+    .card {
+        border-radius: 0.5rem;
+    }
+    
+    .badge.bg-danger {
+        background-color: #F40009 !important;
+    }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Initialize date pickers
+    $('[data-toggle="datepicker"]').datepicker({
+        format: 'yyyy-mm-dd',
+        autoclose: true
+    });
+    
+    // Handle save and print
+    $('button[name="save_and_print"]').click(function(e) {
+        // You can add print functionality here
+        // This is just a placeholder for the actual implementation
+        console.log("Save and print functionality would be implemented here");
+    });
+});
+</script>
+{% endblock %}

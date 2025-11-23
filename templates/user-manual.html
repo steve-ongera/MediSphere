@@ -1,0 +1,536 @@
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-book me-2"></i>Mediclinic Management System Manual</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item active">System Manual</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-hospital me-2"></i>System Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        The Mediclinic Management System streamlines clinic operations with three user roles: Admin, Doctor, and Receptionist.
+                    </div>
+                    
+                    <!-- User Roles Section -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-people-fill me-2"></i>User Roles</h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-primary">
+                                    <div class="card-header bg-clinic-primary text-white">
+                                        <h6 class="card-title mb-0"><i class="bi bi-shield-lock me-2"></i>Administrator</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-graph-up text-clinic me-2"></i>
+                                                Financial Reports & Analytics
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-person-plus text-clinic me-2"></i>
+                                                User Management
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-file-medical text-clinic me-2"></i>
+                                                View All Consultations
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-gear text-clinic me-2"></i>
+                                                System Configuration
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="card-title mb-0"><i class="bi bi-heart-pulse me-2"></i>Doctor</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-search text-success me-2"></i>
+                                                Patient Lookup
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-file-earmark-medical text-success me-2"></i>
+                                                Create Consultations
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-capsule text-success me-2"></i>
+                                                Prescribe Medications
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-qr-code text-success me-2"></i>
+                                                Generate Consultation Codes
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border-warning">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h6 class="card-title mb-0"><i class="bi bi-person-lines-fill me-2"></i>Receptionist</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-person-plus text-warning me-2"></i>
+                                                Patient Registration
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-calendar-check text-warning me-2"></i>
+                                                Appointment Scheduling
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-cash-stack text-warning me-2"></i>
+                                                Payment Processing
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-center">
+                                                <i class="bi bi-search text-warning me-2"></i>
+                                                Consultation Lookup
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Login Process -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-box-arrow-in-right me-2"></i>Login Process</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <ol class="list-group list-group-numbered">
+                                    <li class="list-group-item d-flex align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Access Login Page</div>
+                                            Navigate to the system login URL
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Enter Credentials</div>
+                                            Input your username and password
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Authentication</div>
+                                            System verifies credentials and identifies user type
+                                        </div>
+                                    </li>
+                                    <li class="list-group-item d-flex align-items-start">
+                                        <div class="ms-2 me-auto">
+                                            <div class="fw-bold">Redirect to Dashboard</div>
+                                            Based on user type (Admin/Doctor/Receptionist)
+                                        </div>
+                                    </li>
+                                </ol>
+                                <div class="mt-3 text-center">
+                                    <img src="{% static 'images/login-flow.gif' %}" alt="Login Flow Diagram" class="img-fluid rounded" style="max-height: 300px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Patient Flow Section -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-arrow-repeat me-2"></i>Patient Flow Process</h5>
+                        <div class="card">
+                            <div class="card-header bg-clinic-light">
+                                <ul class="nav nav-tabs card-header-tabs" id="patientFlowTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="reception-tab" data-bs-toggle="tab" data-bs-target="#reception" type="button" role="tab">Reception</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="doctor-tab" data-bs-toggle="tab" data-bs-target="#doctor" type="button" role="tab">Doctor</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment" type="button" role="tab">Payment</button>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="card-body">
+                                <div class="tab-content" id="patientFlowContent">
+                                    <div class="tab-pane fade show active" id="reception" role="tabpanel">
+                                        <h6><i class="bi bi-person-plus-fill text-clinic me-2"></i>Reception Process</h6>
+                                        <ol class="list-group list-group-numbered">
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Patient Arrival</div>
+                                                    Patient arrives at the clinic and approaches reception
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Check Registration</div>
+                                                    Search patient in system by name or ID number
+                                                    <div class="mt-2">
+                                                        <button class="btn btn-sm btn-outline-primary me-2">
+                                                            <i class="bi bi-search"></i> Search Patient
+                                                        </button>
+                                                        <button class="btn btn-sm btn-primary">
+                                                            <i class="bi bi-person-plus"></i> Register New
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">New Patient Registration</div>
+                                                    If new patient, collect:
+                                                    <ul class="mt-1">
+                                                        <li>Full name</li>
+                                                        <li>ID/Passport number</li>
+                                                        <li>Phone number</li>
+                                                        <li>Email address</li>
+                                                        <li>Physical address</li>
+                                                    </ul>
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Queue Management</div>
+                                                    Add patient to doctor's queue and notify when doctor is available
+                                                </div>
+                                            </li>
+                                        </ol>
+                                    </div>
+                                    <div class="tab-pane fade" id="doctor" role="tabpanel">
+                                        <h6><i class="bi bi-heart-pulse text-success me-2"></i>Doctor Consultation Process</h6>
+                                        <ol class="list-group list-group-numbered">
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Patient Entry</div>
+                                                    Doctor receives notification of next patient
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Patient Lookup</div>
+                                                    Search for patient in consultation module
+                                                    <div class="mt-2">
+                                                        <div class="input-group">
+                                                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                                            <input type="text" class="form-control" placeholder="Search patient...">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Create Consultation</div>
+                                                    <ul>
+                                                        <li>Record diagnosis</li>
+                                                        <li>Add prescribed medications</li>
+                                                        <li>Add any notes</li>
+                                                    </ul>
+                                                    <div class="mt-2">
+                                                        <button class="btn btn-sm btn-success">
+                                                            <i class="bi bi-save"></i> Save Consultation
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Generate Code</div>
+                                                    System automatically generates unique consultation code
+                                                    <div class="alert alert-success mt-2">
+                                                        <i class="bi bi-qr-code"></i> Consultation Code: <strong>CLN-2023-05-001</strong>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ol>
+                                    </div>
+                                    <div class="tab-pane fade" id="payment" role="tabpanel">
+                                        <h6><i class="bi bi-cash-stack text-warning me-2"></i>Payment Process</h6>
+                                        <ol class="list-group list-group-numbered">
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Patient Returns</div>
+                                                    Patient returns to reception with consultation code
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Code Lookup</div>
+                                                    Search for consultation using the provided code
+                                                    <div class="mt-2">
+                                                        <div class="input-group">
+                                                            <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
+                                                            <input type="text" class="form-control" placeholder="Enter consultation code...">
+                                                            <button class="btn btn-primary">Search</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Process Payment</div>
+                                                    System displays:
+                                                    <ul>
+                                                        <li>Consultation fee</li>
+                                                        <li>Prescribed medications</li>
+                                                        <li>Total amount due</li>
+                                                    </ul>
+                                                    <div class="mt-2">
+                                                        <button class="btn btn-sm btn-warning me-2">
+                                                            <i class="bi bi-printer"></i> Print Invoice
+                                                        </button>
+                                                        <button class="btn btn-sm btn-success">
+                                                            <i class="bi bi-credit-card"></i> Process Payment
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="list-group-item d-flex align-items-start">
+                                                <div class="ms-2 me-auto">
+                                                    <div class="fw-bold">Completion</div>
+                                                    System records payment and updates financial records
+                                                </div>
+                                            </li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Features -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-shield-lock me-2"></i>Administrator Features</h5>
+                        <div class="accordion" id="adminAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#adminFinancial">
+                                        <i class="bi bi-graph-up me-2"></i>Financial Reports
+                                    </button>
+                                </h2>
+                                <div id="adminFinancial" class="accordion-collapse collapse" data-bs-parent="#adminAccordion">
+                                    <div class="accordion-body">
+                                        <p>Administrators can access comprehensive financial reports including:</p>
+                                        <ul>
+                                            <li>Daily, weekly, monthly revenue</li>
+                                            <li>Payment type breakdown (cash, insurance, credit)</li>
+                                            <li>Service type revenue analysis</li>
+                                            <li>Outstanding payments</li>
+                                        </ul>
+                                        <div class="alert alert-info">
+                                            <i class="bi bi-lightbulb"></i> Use the date filters to analyze trends over specific periods.
+                                        </div>
+                                        <img src="{% static 'images/financial-report.png' %}" alt="Financial Report" class="img-fluid rounded border">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#adminUsers">
+                                        <i class="bi bi-people-fill me-2"></i>User Management
+                                    </button>
+                                </h2>
+                                <div id="adminUsers" class="accordion-collapse collapse" data-bs-parent="#adminAccordion">
+                                    <div class="accordion-body">
+                                        <p>Manage all system users with these capabilities:</p>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="card mb-3">
+                                                    <div class="card-header bg-clinic-light">
+                                                        <h6 class="mb-0"><i class="bi bi-person-plus"></i> Add New User</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <ol>
+                                                            <li>Navigate to Users > Add New</li>
+                                                            <li>Fill in user details</li>
+                                                            <li>Assign appropriate role (Admin/Doctor/Receptionist)</li>
+                                                            <li>Set temporary password</li>
+                                                            <li>Save and notify user</li>
+                                                        </ol>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card mb-3">
+                                                    <div class="card-header bg-clinic-light">
+                                                        <h6 class="mb-0"><i class="bi bi-person-gear"></i> Manage Permissions</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <p>Adjust user permissions as needed:</p>
+                                                        <ul>
+                                                            <li>Enable/disable system access</li>
+                                                            <li>Reset passwords</li>
+                                                            <li>Audit login activity</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Troubleshooting -->
+                    <div>
+                        <h5 class="text-clinic mb-3"><i class="bi bi-tools me-2"></i>Troubleshooting</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th><i class="bi bi-exclamation-triangle"></i> Issue</th>
+                                                <th><i class="bi bi-check-circle"></i> Solution</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Can't find patient record</td>
+                                                <td>
+                                                    <ul>
+                                                        <li>Check spelling variations</li>
+                                                        <li>Search by ID number instead of name</li>
+                                                        <li>Verify registration status</li>
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Consultation code not found</td>
+                                                <td>
+                                                    <ul>
+                                                        <li>Verify code was entered correctly</li>
+                                                        <li>Check if consultation was saved</li>
+                                                        <li>Contact doctor for verification</li>
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>System running slowly</td>
+                                                <td>
+                                                    <ul>
+                                                        <li>Refresh the page</li>
+                                                        <li>Clear browser cache</li>
+                                                        <li>Report to IT if persistent</li>
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-clinic-light text-center">
+                    <div class="d-flex justify-content-center">
+                        <button class="btn btn-clinic me-3">
+                            <i class="bi bi-download me-2"></i>Download PDF Manual
+                        </button>
+                        <button class="btn btn-outline-secondary">
+                            <i class="bi bi-printer me-2"></i>Print This Guide
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    :root {
+        --clinic-primary: #1a8cff;
+        --clinic-secondary: #66b3ff;
+        --clinic-light: rgba(26, 140, 255, 0.1);
+    }
+    
+    .bg-clinic-primary {
+        background-color: var(--clinic-primary);
+    }
+    
+    .bg-clinic-light {
+        background-color: var(--clinic-light);
+    }
+    
+    .text-clinic {
+        color: var(--clinic-primary);
+    }
+    
+    .btn-clinic {
+        background-color: var(--clinic-primary);
+        color: white;
+    }
+    
+    .btn-clinic:hover {
+        background-color: var(--clinic-secondary);
+        color: white;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(26, 140, 255, 0.1);
+        color: var(--clinic-primary);
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: var(--clinic-primary);
+        border-bottom: 3px solid var(--clinic-primary);
+    }
+    
+    .list-group-item:hover {
+        background-color: rgba(26, 140, 255, 0.05);
+    }
+    
+    @media (max-width: 768px) {
+        .pagetitle h1 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+
+<script>
+    // Simple animation for icons
+    document.addEventListener('DOMContentLoaded', function() {
+        const icons = document.querySelectorAll('.bi');
+        icons.forEach(icon => {
+            icon.addEventListener('mouseenter', function() {
+                this.classList.add('animate__animated', 'animate__pulse');
+            });
+            icon.addEventListener('mouseleave', function() {
+                this.classList.remove('animate__animated', 'animate__pulse');
+            });
+        });
+    });
+</script>
+
+{% endblock %}

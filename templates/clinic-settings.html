@@ -1,0 +1,209 @@
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% load custom_tags %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-gear me-2"></i>Clinic System Settings</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Admin</a></li>
+            <li class="breadcrumb-item active">System Settings</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <h5 class="card-title mb-0"><i class="bi bi-sliders me-2"></i>Configuration Panel</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Clinic Information Section -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-building me-2"></i>Clinic Information</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="clinicName" class="form-label">Clinic Name</label>
+                                <input type="text" class="form-control" id="clinicName" value="Harmony Medical Clinic">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="clinicLogo" class="form-label">Logo URL</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="clinicLogo" value="/static/assets/img/clinic-logo.png">
+                                    <button class="btn btn-outline-clinic" type="button">Upload</button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="timezone" class="form-label">Time Zone</label>
+                                <select class="form-select" id="timezone">
+                                    <option selected>America/New_York</option>
+                                    <option>America/Chicago</option>
+                                    <option>America/Denver</option>
+                                    <option>America/Los_Angeles</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="currency" class="form-label">Default Currency</label>
+                                <select class="form-select" id="currency">
+                                    <option selected>USD</option>
+                                    <option>EUR</option>
+                                    <option>GBP</option>
+                                    <option>JPY</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="dateFormat" class="form-label">Date Format</label>
+                                <select class="form-select" id="dateFormat">
+                                    <option selected>MM/DD/YYYY</option>
+                                    <option>DD/MM/YYYY</option>
+                                    <option>YYYY-MM-DD</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Working Hours Section -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-clock me-2"></i>Working Hours</h5>
+                        <div class="row g-3">
+                          {% for day in 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday'|split:"," %}
+
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header bg-clinic-light py-2">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="{{ day|lower }}Toggle" 
+                                                   {% if day != 'Sunday' %}checked{% endif %}>
+                                            <label class="form-check-label" for="{{ day|lower }}Toggle">{{ day }}</label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <label class="form-label small">Open</label>
+                                                <input type="time" class="form-control" 
+                                                       value="{% if day == 'Saturday' %}09:00{% elif day != 'Sunday' %}08:00{% endif %}"
+                                                       {% if day == 'Sunday' %}disabled{% endif %}>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small">Close</label>
+                                                <input type="time" class="form-control" 
+                                                       value="{% if day == 'Saturday' %}14:00{% elif day != 'Sunday' %}18:00{% endif %}"
+                                                       {% if day == 'Sunday' %}disabled{% endif %}>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Appointment Settings -->
+                    <div class="mb-5">
+                        <h5 class="text-clinic mb-3"><i class="bi bi-calendar-check me-2"></i>Appointment Settings</h5>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="slotDuration" class="form-label">Slot Duration (minutes)</label>
+                                <input type="number" class="form-control" id="slotDuration" value="30">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="maxPatients" class="form-label">Max Daily Patients</label>
+                                <input type="number" class="form-control" id="maxPatients" value="50">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="bookingDays" class="form-label">Advance Booking (days)</label>
+                                <input type="number" class="form-control" id="bookingDays" value="30">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="cancelHours" class="form-label">Cancellation Notice (hours)</label>
+                                <input type="number" class="form-control" id="cancelHours" value="24">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Settings -->
+                    <div>
+                        <h5 class="text-clinic mb-3"><i class="bi bi-shield-lock me-2"></i>Security Settings</h5>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="sessionTimeout" class="form-label">Session Timeout (minutes)</label>
+                                <input type="number" class="form-control" id="sessionTimeout" value="60">
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Password Requirements</label>
+                                <div class="card bg-clinic-light">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="requireUpper" checked>
+                                                    <label class="form-check-label" for="requireUpper">
+                                                        Uppercase letters
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="requireSpecial" checked>
+                                                    <label class="form-check-label" for="requireSpecial">
+                                                        Special characters
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="requireDigit" checked>
+                                                    <label class="form-check-label" for="requireDigit">
+                                                        Numbers
+                                                    </label>
+                                                </div>
+                                                <div class="input-group mt-2">
+                                                    <span class="input-group-text">Min length</span>
+                                                    <input type="number" class="form-control" value="8" min="6">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-clinic-light text-end">
+                    <button type="button" class="btn btn-outline-secondary me-2">Reset</button>
+                    <button type="button" class="btn btn-clinic">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .form-switch .form-check-input {
+        width: 2.5em;
+        margin-left: -2.5em;
+    }
+    .btn-outline-clinic {
+        color: var(--clinic-primary);
+        border-color: var(--clinic-primary);
+    }
+    .btn-outline-clinic:hover {
+        color: white;
+        background-color: var(--clinic-primary);
+    }
+</style>
+
+{% endblock %}

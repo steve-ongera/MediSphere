@@ -1,0 +1,785 @@
+{% extends 'base/base.html'%}
+{% load widget_tweaks %}
+{% load static %}
+
+{% block title %}New Over-the-Counter Sale - Mediclinic Management System{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-cart-plus me-2"></i>New Over-the-Counter Sale</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="#">Sales</a></li>
+            <li class="breadcrumb-item active">OTC Sale</li>
+        </ol>
+    </nav>
+</div><!-- End Page Title -->
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0"><i class="bi bi-capsule me-2"></i>Over-the-Counter Sale</h5>
+                        <a href="{% url 'otc_sale_list' %}" class="btn btn-outline-light" style="color:grey;">
+                            <i class="bi bi-arrow-left me-2"></i>Back to Sales
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post" id="otc-sale-form" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Customer Information Section -->
+                        <div class="card mb-4 border-clinic-primary">
+                            <div class="card-header bg-clinic-light">
+                                <h6 class="mb-0"><i class="bi bi-person-lines-fill me-2"></i>Customer Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.customer_name.id_for_label }}" class="form-label">
+                                                Customer Name
+                                            </label>
+                                            {% render_field form.customer_name class="form-control" %}
+                                            {% if form.customer_name.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.customer_name.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.mpesa_code.id_for_label }}" class="form-label">
+                                                M-PESA Code
+                                            </label>
+                                            {% render_field form.mpesa_code class="form-control" placeholder="Optional" %}
+                                            {% if form.mpesa_code.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.mpesa_code.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.payment_status.id_for_label }}" class="form-label">
+                                                Payment Status
+                                            </label>
+                                            {% render_field form.payment_status class="form-select" %}
+                                            {% if form.payment_status.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.payment_status.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                        Notes
+                                    </label>
+                                    {% render_field form.notes class="form-control" rows="2" placeholder="Optional notes" %}
+                                    {% if form.notes.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.notes.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Sale Summary Section -->
+                        <div class="card mb-4 border-clinic-primary">
+                            <div class="card-header bg-clinic-light">
+                                <h6 class="mb-0"><i class="bi bi-receipt me-2"></i>Sale Summary</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="text-success mb-0">Total Amount</h5>
+                                    <h4 class="mb-0" id="grand-total">KSh 0.00</h4>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <p class="mb-0">Items Count:</p>
+                                    <p class="mb-0 fw-bold" id="items-count">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Medicine Items Section -->
+                        <div class="card mb-4 border-clinic-primary">
+                            <div class="card-header bg-clinic-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="bi bi-capsule me-2"></i>Medicine Items</h6>
+                                    <button type="button" id="add-row" class="btn btn-clinic btn-sm">
+                                        <i class="bi bi-plus-circle me-2"></i>Add Item
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                {{ formset.management_form }}
+                                
+                                <div id="formset-container">
+                                    {% for form in formset %}
+                                    <div class="formset-row border rounded p-3 mb-3">
+                                        {{ form.id }}
+                                        <div class="row align-items-end">
+                                            <div class="col-md-5 mb-3">
+                                                <label for="{{ form.medicine.id_for_label }}" class="form-label">
+                                                    Medicine
+                                                </label>
+                                                {% render_field form.medicine class="form-select medicine-select" %}
+                                                {% if form.medicine.errors %}
+                                                    <div class="invalid-feedback d-block">
+                                                        {{ form.medicine.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                                <div class="stock-info small text-muted mt-1"></div>
+                                            </div>
+                                            <div class="col-md-2 mb-3">
+                                                <label for="{{ form.quantity.id_for_label }}" class="form-label">
+                                                    Quantity
+                                                </label>
+                                                {% render_field form.quantity class="form-control item-quantity" min="1" %}
+                                                {% if form.quantity.errors %}
+                                                    <div class="invalid-feedback d-block">
+                                                        {{ form.quantity.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-2 mb-3">
+                                                <label for="{{ form.unit_price.id_for_label }}" class="form-label">
+                                                    Unit Price
+                                                </label>
+                                                {% render_field form.unit_price class="form-control item-price" %}
+                                                {% if form.unit_price.errors %}
+                                                    <div class="invalid-feedback d-block">
+                                                        {{ form.unit_price.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-2 mb-3">
+                                                <label class="form-label">Subtotal</label>
+                                                <input type="text" class="form-control item-subtotal" readonly value="0.00">
+                                            </div>
+                                            <div class="col-md-1 mb-3 d-flex align-items-center justify-content-center">
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-row" title="Remove item">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                                {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                
+                                {% if formset.non_form_errors %}
+                                <div class="alert alert-danger alert-dismissible fade show">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    {% for error in formset.non_form_errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                                {% endif %}  
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end">
+                            <a href="{% url 'otc_sale_list' %}" class="btn btn-outline-secondary me-2">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-clinic">
+                                <i class="bi bi-check-circle me-2"></i>Complete Sale
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    /* Form styling enhancements */
+    .form-control, .form-select {
+        border-radius: 0.375rem;
+        border: 1px solid #ced4da;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--clinic-primary);
+        box-shadow: 0 0 0 0.25rem rgba(26, 140, 255, 0.25);
+    }
+    
+    textarea.form-control {
+        min-height: 100px;
+    }
+    
+    .card {
+        border-radius: 0.5rem;
+    }
+    
+    .card-header {
+        border-radius: 0.5rem 0.5rem 0 0 !important;
+    }
+    
+    .is-invalid {
+        border-color: #dc3545;
+    }
+    
+    .invalid-feedback {
+        color: #dc3545;
+        font-size: 0.875em;
+    }
+    
+    .btn-outline-secondary:hover {
+        color: #fff;
+        background-color: #6c757d;
+        border-color: #6c757d;
+    }
+    
+    /* Formset specific styles */
+    .formset-row {
+        background-color: #f8fafc;
+        transition: all 0.3s ease;
+    }
+    
+    .formset-row:hover {
+        background-color: #f1f5f9;
+    }
+    
+    .stock-info.text-danger {
+        color: #dc3545 !important;
+    }
+    
+    .delete-row {
+        cursor: pointer;
+    }
+    
+    /* Autocomplete styles */
+    .medicine-autocomplete-wrapper {
+        position: relative !important;
+    }
+    
+    .medicine-search:focus {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .medicine-option:last-child {
+        border-bottom: none !important;
+    }
+    
+    .medicine-dropdown::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .medicine-dropdown::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    .medicine-dropdown::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+</style>
+
+<script>
+    // Store medicine data from the server
+    const medicines = {{ medicines|safe }};
+    const medicineMap = {};
+
+    // Create a lookup for quick access
+    medicines.forEach(med => {
+        medicineMap[med.id] = med;
+    });
+
+    // Function to update form indexes when rows are added/removed
+    function updateElementIndex(el, prefix, ndx) {
+        const id_regex = new RegExp('(' + prefix + '-\\d+)');
+        const replacement = prefix + '-' + ndx;
+        
+        if (el.getAttribute("for")) {
+            el.setAttribute("for", el.getAttribute("for").replace(id_regex, replacement));
+        }
+        if (el.id) {
+            el.id = el.id.replace(id_regex, replacement);
+        }
+        if (el.name) {
+            el.name = el.name.replace(id_regex, replacement);
+        }
+    }
+
+    // Function to clone and add a new formset row
+    function addForm(event) {
+        event.preventDefault();
+        
+        const totalForms = document.querySelector("#id_items-TOTAL_FORMS");
+        const currentFormCount = parseInt(totalForms.value);
+        
+        // Clone the first form
+        const formsetContainer = document.querySelector("#formset-container");
+        const emptyForm = formsetContainer.querySelector(".formset-row:first-child").cloneNode(true);
+        
+        // Update IDs and names
+        const formRegex = RegExp(`items-(\\d){1}-`,'g');
+        emptyForm.innerHTML = emptyForm.innerHTML.replace(formRegex, `items-${currentFormCount}-`);
+        
+        // Clear values
+        emptyForm.querySelectorAll("input:not([type=hidden]):not([readonly]), select").forEach(input => {
+            if (input.type === 'number') {
+                input.value = '1';
+            } else {
+                input.value = '';
+            }
+        });
+        
+        // Clear stock info
+        emptyForm.querySelector(".stock-info").textContent = '';
+        
+        // Reset the select element (remove autocomplete processing flag)
+        const medicineSelect = emptyForm.querySelector(".medicine-select");
+        if (medicineSelect) {
+            medicineSelect.removeAttribute('data-autocomplete-processed');
+        }
+        
+        // Remove any existing autocomplete wrapper and restore original select
+        const existingWrapper = emptyForm.querySelector(".medicine-autocomplete-wrapper");
+        if (existingWrapper) {
+            const originalSelect = existingWrapper.querySelector(".medicine-select");
+            if (originalSelect) {
+                originalSelect.style.display = '';
+                originalSelect.value = '';
+                existingWrapper.parentNode.insertBefore(originalSelect, existingWrapper);
+                existingWrapper.remove();
+            }
+        }
+        
+        // Add the new form to the DOM first
+        formsetContainer.appendChild(emptyForm);
+        
+        // Now set up event handlers - IMPORTANT: Do this after adding to DOM
+        // but BEFORE processing autocomplete
+        setupFormRowHandlers(emptyForm);
+        
+        // Process autocomplete for the new row (this should happen last)
+        const newMedicineSelect = emptyForm.querySelector(".medicine-select");
+        if (newMedicineSelect && window.createMedicineAutocomplete) {
+            window.createMedicineAutocomplete(newMedicineSelect);
+        }
+        
+        // Update form count
+        totalForms.value = currentFormCount + 1;
+        
+        // Update totals
+        updateTotals();
+    }
+
+    // Separate function to set up event handlers for a form row
+    function setupFormRowHandlers(formRow) {
+        // Delete button handler
+        const deleteBtn = formRow.querySelector(".delete-row");
+        if (deleteBtn) {
+            // Remove existing listeners to avoid duplicates
+            deleteBtn.removeEventListener("click", deleteForm);
+            deleteBtn.addEventListener("click", deleteForm);
+        }
+        
+        // Medicine select change handler
+        const medicineSelect = formRow.querySelector(".medicine-select");
+        if (medicineSelect) {
+            medicineSelect.removeEventListener("change", handleMedicineChange);
+            medicineSelect.addEventListener("change", handleMedicineChange);
+        }
+        
+        // Quantity change handlers
+        const quantityInput = formRow.querySelector(".item-quantity");
+        if (quantityInput) {
+            quantityInput.removeEventListener("change", updateSubtotal);
+            quantityInput.removeEventListener("input", updateSubtotal);
+            quantityInput.addEventListener("change", updateSubtotal);
+            quantityInput.addEventListener("input", updateSubtotal);
+        }
+    }
+
+    // Function to delete a formset row
+    function deleteForm(event) {
+        const totalForms = document.querySelector("#id_items-TOTAL_FORMS");
+        const currentFormCount = parseInt(totalForms.value);
+        
+        // Don't delete if it's the only form
+        if (currentFormCount <= 1) {
+            alert("You need at least one item.");
+            return;
+        }
+        
+        // Get the row
+        const row = event.target.closest('.formset-row');
+        
+        // If this is an existing instance, mark for deletion instead of removing
+        const deleteInput = row.querySelector('input[name$="-DELETE"]');
+        if (deleteInput) {
+            deleteInput.checked = true;
+            row.style.display = 'none';
+        } else {
+            // Otherwise remove it from DOM
+            row.remove();
+            
+            // Update form indexes for all remaining forms
+            const formRows = document.querySelectorAll("#formset-container .formset-row");
+            for (let i = 0; i < formRows.length; i++) {
+                const formRow = formRows[i];
+                formRow.querySelectorAll("input, select, label").forEach(input => {
+                    updateElementIndex(input, "items", i);
+                });
+            }
+            
+            // Update form count
+            totalForms.value = currentFormCount - 1;
+        }
+        
+        // Update totals
+        updateTotals();
+    }
+
+    // Function to handle medicine selection change
+    function handleMedicineChange(event) {
+        const select = event.target;
+        const row = select.closest(".formset-row");
+        const medicineId = parseInt(select.value);
+        
+        // Get fields
+        const priceInput = row.querySelector(".item-price");
+        const quantityInput = row.querySelector(".item-quantity");
+        const stockInfo = row.querySelector(".stock-info");
+        
+        if (medicineId && medicineMap[medicineId]) {
+            const medicine = medicineMap[medicineId];
+            
+            // Set unit price and stock info
+            priceInput.value = medicine.unit_price;
+            stockInfo.textContent = `Available Stock: ${medicine.quantity_in_stock}`;
+            
+            // Set max quantity
+            quantityInput.max = medicine.quantity_in_stock;
+            
+            // Ensure quantity isn't greater than stock
+            if (parseInt(quantityInput.value) > medicine.quantity_in_stock) {
+                quantityInput.value = medicine.quantity_in_stock;
+            }
+            
+            // If stock is low, add a warning
+            if (medicine.quantity_in_stock < 5) {
+                stockInfo.classList.add("text-danger");
+            } else {
+                stockInfo.classList.remove("text-danger");
+            }
+        } else {
+            // Clear fields
+            priceInput.value = "";
+            stockInfo.textContent = "";
+            quantityInput.max = "";
+        }
+        
+        // Update subtotal
+        updateSubtotal(null, row);
+    }
+
+    // Function to update subtotal
+    function updateSubtotal(event, targetRow = null) {
+        const row = targetRow || (event ? event.target.closest('.formset-row') : null);
+        
+        if (row) {
+            const quantity = parseInt(row.querySelector('.item-quantity').value) || 0;
+            const price = parseFloat(row.querySelector('.item-price').value) || 0;
+            const subtotal = quantity * price;
+            
+            row.querySelector('.item-subtotal').value = subtotal.toFixed(2);
+        }
+        
+        // Update grand total
+        updateTotals();
+    }
+
+    // Function to update grand total and item count
+    function updateTotals() {
+        let grandTotal = 0;
+        let itemCount = 0;
+        
+        // Sum up all visible subtotals
+        document.querySelectorAll('.formset-row:not([style*="display: none"])').forEach(row => {
+            const subtotalInput = row.querySelector('.item-subtotal');
+            const quantityInput = row.querySelector('.item-quantity');
+            
+            if (subtotalInput && subtotalInput.value) {
+                grandTotal += parseFloat(subtotalInput.value);
+            }
+            
+            if (quantityInput && quantityInput.value) {
+                itemCount += parseInt(quantityInput.value);
+            }
+        });
+        
+        // Update the UI
+        document.querySelector('#grand-total').textContent = `KSh ${grandTotal.toFixed(2)}`;
+        document.querySelector('#items-count').textContent = itemCount;
+    }
+
+    // Add event listeners when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add row button
+        document.querySelector('#add-row').addEventListener('click', addForm);
+        
+        // Set up handlers for existing rows
+        document.querySelectorAll('.formset-row').forEach(setupFormRowHandlers);
+        
+        // Calculate initial totals
+        updateTotals();
+    });
+
+
+    // Enhanced Medicine Autocomplete - Fixed version
+    (function() {
+        'use strict';
+        
+        // Make the function globally accessible
+        window.createMedicineAutocomplete = createMedicineAutocomplete;
+        
+        // Function to create autocomplete for a single medicine select
+        function createMedicineAutocomplete(selectElement) {
+            // Skip if already processed
+            if (selectElement.dataset.autocompleteProcessed) {
+                return;
+            }
+            selectElement.dataset.autocompleteProcessed = 'true';
+            
+            const selectContainer = selectElement.parentNode;
+            
+            // Create wrapper div
+            const wrapper = document.createElement('div');
+            wrapper.className = 'medicine-autocomplete-wrapper';
+            wrapper.style.position = 'relative';
+            
+            // Create search input
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.className = 'form-control medicine-search';
+            searchInput.placeholder = 'Type medicine name...';
+            searchInput.autocomplete = 'off';
+            
+            // Create dropdown list
+            const dropdown = document.createElement('div');
+            dropdown.className = 'medicine-dropdown';
+            dropdown.style.cssText = `
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #ddd;
+                border-top: none;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                display: none;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                border-radius: 0 0 0.375rem 0.375rem;
+            `;
+            
+            // Replace select with wrapper
+            selectElement.style.display = 'none';
+            selectContainer.insertBefore(wrapper, selectElement);
+            wrapper.appendChild(searchInput);
+            wrapper.appendChild(dropdown);
+            wrapper.appendChild(selectElement);
+            
+            let selectedMedicine = null;
+            
+            // Filter medicines safely
+            function filterMedicines(searchTerm) {
+                if (!searchTerm || searchTerm.length < 2) return [];
+                
+                const searchLower = searchTerm.toLowerCase();
+                return medicines.filter(medicine => {
+                    const name = (medicine.name || '').toLowerCase();
+                    const genericName = (medicine.generic_name || '').toLowerCase();
+                    return name.includes(searchLower) || genericName.includes(searchLower);
+                }).slice(0, 10);
+            }
+            
+            // Render dropdown options
+            function renderDropdown(filteredMedicines) {
+                dropdown.innerHTML = '';
+                
+                if (filteredMedicines.length === 0) {
+                    const noResult = document.createElement('div');
+                    noResult.className = 'p-2 text-muted';
+                    noResult.textContent = 'No medicines found';
+                    dropdown.appendChild(noResult);
+                } else {
+                    filteredMedicines.forEach(medicine => {
+                        const option = document.createElement('div');
+                        option.className = 'medicine-option p-2';
+                        option.style.cssText = `
+                            cursor: pointer;
+                            border-bottom: 1px solid #eee;
+                            transition: background-color 0.2s;
+                        `;
+                        
+                        option.innerHTML = `
+                            <div class="fw-bold">${medicine.name || 'Unknown Medicine'}</div>
+                            <small class="text-muted">${medicine.generic_name || 'No generic name'} - KSh ${medicine.unit_price || '0.00'}</small>
+                            <small class="text-success d-block">Stock: ${medicine.quantity_in_stock || 0}</small>
+                        `;
+                        
+                        // Hover effects
+                        option.onmouseenter = () => option.style.backgroundColor = '#f8f9fa';
+                        option.onmouseleave = () => option.style.backgroundColor = 'white';
+                        
+                        // Click to select
+                        option.onclick = () => selectMedicine(medicine);
+                        
+                        dropdown.appendChild(option);
+                    });
+                }
+                dropdown.style.display = 'block';
+            }
+            
+            // Select medicine
+            function selectMedicine(medicine) {
+                selectedMedicine = medicine;
+                searchInput.value = medicine.name || 'Unknown Medicine';
+                selectElement.value = medicine.id;
+                dropdown.style.display = 'none';
+                
+                // Trigger change event for existing handlers
+                selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            
+            // Input handler
+            searchInput.oninput = (e) => {
+                const searchTerm = e.target.value.trim();
+                
+                if (searchTerm.length < 2) {
+                    dropdown.style.display = 'none';
+                    if (selectedMedicine && searchTerm.length === 0) {
+                        selectedMedicine = null;
+                        selectElement.value = '';
+                        selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    return;
+                }
+                
+                renderDropdown(filterMedicines(searchTerm));
+            };
+            
+            // Focus handler
+            searchInput.onfocus = (e) => {
+                const searchTerm = e.target.value.trim();
+                if (searchTerm.length >= 2) {
+                    renderDropdown(filterMedicines(searchTerm));
+                }
+            };
+            
+            // Keyboard navigation
+            searchInput.onkeydown = (e) => {
+                const options = dropdown.querySelectorAll('.medicine-option');
+                let currentIndex = Array.from(options).findIndex(opt => 
+                    opt.style.backgroundColor === 'rgb(248, 249, 250)'
+                );
+                
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        if (currentIndex < options.length - 1) {
+                            if (currentIndex >= 0) options[currentIndex].style.backgroundColor = 'white';
+                            currentIndex++;
+                            options[currentIndex].style.backgroundColor = '#f8f9fa';
+                        }
+                        break;
+                        
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        if (currentIndex > 0) {
+                            options[currentIndex].style.backgroundColor = 'white';
+                            currentIndex--;
+                            options[currentIndex].style.backgroundColor = '#f8f9fa';
+                        }
+                        break;
+                        
+                    case 'Enter':
+                        e.preventDefault();
+                        if (currentIndex >= 0 && options[currentIndex]) {
+                            const nameEl = options[currentIndex].querySelector('.fw-bold');
+                            if (nameEl) {
+                                const medicine = medicines.find(m => 
+                                    (m.name || 'Unknown Medicine') === nameEl.textContent
+                                );
+                                if (medicine) selectMedicine(medicine);
+                            }
+                        }
+                        break;
+                        
+                    case 'Escape':
+                        dropdown.style.display = 'none';
+                        searchInput.blur();
+                        break;
+                }
+            };
+            
+            // Click outside to close
+            document.addEventListener('click', (e) => {
+                if (!wrapper.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                }
+            });
+            
+            // Initialize with existing value
+            if (selectElement.value && medicineMap[selectElement.value]) {
+                const medicine = medicineMap[selectElement.value];
+                selectedMedicine = medicine;
+                searchInput.value = medicine.name || 'Unknown Medicine';
+            }
+        }
+        
+        // Process all existing medicine selects
+        function processExistingSelects() {
+            document.querySelectorAll('.medicine-select:not([data-autocomplete-processed])').forEach(createMedicineAutocomplete);
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    processExistingSelects();
+                }, 100);
+            });
+        } else {
+            setTimeout(() => {
+                processExistingSelects();
+            }, 100);
+        }
+    })();
+</script>
+{% endblock %}
