@@ -478,7 +478,10 @@ class Consultation(models.Model):
     
     def _update_invoice(self):
         """Create or update invoice with consultation fee"""
-        invoice, created = Invoice.objects.get_or_create(visit=self.visit)
+        invoice, created = Invoice.objects.get_or_create(
+            visit=self.visit,
+            defaults={'patient': self.visit.patient}
+        )
         
         # Add consultation charge
         InvoiceItem.objects.get_or_create(
@@ -608,7 +611,10 @@ class LabOrder(models.Model):
         self._update_invoice()
     
     def _update_invoice(self):
-        invoice, created = Invoice.objects.get_or_create(visit=self.visit)
+        invoice, created = Invoice.objects.get_or_create(
+            visit=self.visit,
+            defaults={'patient': self.visit.patient}
+        )
         InvoiceItem.objects.get_or_create(
             invoice=invoice,
             item_type='LABORATORY',
@@ -753,7 +759,10 @@ class RadiologyOrder(models.Model):
         self._update_invoice()
     
     def _update_invoice(self):
-        invoice, created = Invoice.objects.get_or_create(visit=self.visit)
+        invoice, created = Invoice.objects.get_or_create(
+            visit=self.visit,
+            defaults={'patient': self.visit.patient}
+        )
         InvoiceItem.objects.get_or_create(
             invoice=invoice,
             item_type='RADIOLOGY',
@@ -994,7 +1003,10 @@ class PrescriptionItem(models.Model):
             self._update_invoice()
     
     def _update_invoice(self):
-        invoice, created = Invoice.objects.get_or_create(visit=self.prescription.visit)
+        invoice, created = Invoice.objects.get_or_create(
+            visit=self.prescription.visit,
+            defaults={'patient': self.prescription.visit.patient}
+        )
         
         # Check for allergy conflicts
         patient = self.prescription.visit.patient
@@ -1202,7 +1214,10 @@ class Admission(models.Model):
             duration = self.discharge_datetime - self.admission_datetime
             days = max(1, duration.days)  # Minimum 1 day charge
             
-            invoice, created = Invoice.objects.get_or_create(visit=self.visit)
+            invoice, created = Invoice.objects.get_or_create(
+                visit=self.visit,
+                defaults={'patient': self.patient}
+            )
             InvoiceItem.objects.create(
                 invoice=invoice,
                 item_type='BED',
@@ -1406,7 +1421,10 @@ class Surgery(models.Model):
             self._update_invoice()
     
     def _update_invoice(self):
-        invoice, created = Invoice.objects.get_or_create(visit=self.admission.visit)
+        invoice, created = Invoice.objects.get_or_create(
+            visit=self.admission.visit,
+            defaults={'patient': self.patient}
+        )
         
         # Surgery fee
         InvoiceItem.objects.create(
@@ -1506,13 +1524,22 @@ class Invoice(models.Model):
             count = Invoice.objects.filter(invoice_date__date=today).count() + 1
             self.invoice_number = f"INV{today.strftime('%Y%m%d')}{count:04d}"
         
-        # Calculate totals
-        self.calculate_totals()
+        # Only calculate totals if the invoice has been saved before (has pk)
+        if self.pk:
+            self.calculate_totals()
         
         super().save(*args, **kwargs)
     
     def calculate_totals(self):
         """Recalculate invoice totals"""
+        # Check if invoice has been saved and has items relationship
+        if not self.pk:
+            # Can't calculate totals for unsaved invoice
+            self.subtotal = Decimal('0.00')
+            self.total_amount = Decimal('0.00')
+            self.balance = Decimal('0.00')
+            return
+        
         items_total = self.items.aggregate(
             total=Sum(F('quantity') * F('unit_price')))['total'] or Decimal('0.00')
         
