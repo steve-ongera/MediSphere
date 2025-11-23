@@ -66,13 +66,53 @@
   <body>
     {% include "base/navbar.html" %}
 
-    {% if request.user.user_type == 'ADMIN' %}
-        {% include "base/sidebars/admin_sidebar.html" %}
-    {% elif request.user.user_type == 'DOCTOR' %}
-        {% include "base/sidebars/doctor_sidebar.html" %}
-    {% else %}
-        {% include "base/sidebars/receptionist_sidebar.html" %}
+    {% if request.user.is_authenticated %}
+        {% if request.user.role %}
+            
+            {% if request.user.role.name == 'MEDICAL_SUPERINTENDENT' %}
+                {% include "base/sidebars/medical_superintendent_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'DOCTOR' %}
+                {% include "base/sidebars/doctor_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'CLINICAL_OFFICER' %}
+                {% include "base/sidebars/clinical_officer_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'NURSE' %}
+                {% include "base/sidebars/nurse_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'LAB_TECHNICIAN' %}
+                {% include "base/sidebars/lab_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'RADIOLOGIST' %}
+                {% include "base/sidebars/radiologist_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'PHARMACIST' %}
+                {% include "base/sidebars/pharmacy_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'RECEPTIONIST' %}
+                {% include "base/sidebars/receptionist_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'CASHIER' %}
+                {% include "base/sidebars/cashier_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'NHIF_OFFICER' %}
+                {% include "base/sidebars/nhif_sidebar.html" %}
+            
+            {% elif request.user.role.name == 'IT_ADMIN' %}
+                {% include "base/sidebars/admin_sidebar.html" %}
+            
+            {% else %}
+                {% include "base/sidebars/default_sidebar.html" %}
+            
+            {% endif %}
+        
+        {% else %}
+            {# In case user has no role assigned #}
+            {% include "base/sidebars/default_sidebar.html" %}
+        {% endif %}
     {% endif %}
+
 
 
 
