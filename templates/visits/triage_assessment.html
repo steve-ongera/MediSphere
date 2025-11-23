@@ -1,0 +1,457 @@
+﻿
+{% extends 'base/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Triage Assessment - MediSphere HMS{% endblock %}
+
+{% block content %}
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-clipboard-pulse me-2"></i>Triage Assessment</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'triage-queue' %}">Triage Queue</a></li>
+            <li class="breadcrumb-item active">Assessment</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row">
+        <!-- Left Side - Assessment Form -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #2980b9 0%, #1a76d1 100%); color: white;">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-activity me-2"></i>{% if is_update %}Update{% else %}Complete{% endif %} Triage Assessment
+                    </h5>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" id="triageForm">
+                        {% csrf_token %}
+                        
+                        <!-- Vital Signs -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-heart-pulse me-2 text-danger"></i>Vital Signs
+                            </h5>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="{{ form.temperature.id_for_label }}" class="form-label">
+                                        Temperature (°C) <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.temperature class="form-control" placeholder="36.5" step="0.1" %}
+                                        <span class="input-group-text">°C</span>
+                                    </div>
+                                    <small class="text-muted">Normal: 36.5-37.5°C</small>
+                                    {% if form.temperature.errors %}
+                                    <div class="text-danger small mt-1">{{ form.temperature.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label for="{{ form.pulse.id_for_label }}" class="form-label">
+                                        Pulse (BPM) <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.pulse class="form-control" placeholder="72" %}
+                                        <span class="input-group-text">BPM</span>
+                                    </div>
+                                    <small class="text-muted">Normal: 60-100 BPM</small>
+                                    {% if form.pulse.errors %}
+                                    <div class="text-danger small mt-1">{{ form.pulse.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label for="{{ form.respiratory_rate.id_for_label }}" class="form-label">
+                                        Resp. Rate <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.respiratory_rate class="form-control" placeholder="16" %}
+                                        <span class="input-group-text">/min</span>
+                                    </div>
+                                    <small class="text-muted">Normal: 12-20/min</small>
+                                    {% if form.respiratory_rate.errors %}
+                                    <div class="text-danger small mt-1">{{ form.respiratory_rate.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-4">
+                                    <label for="{{ form.systolic_bp.id_for_label }}" class="form-label">
+                                        Systolic BP <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.systolic_bp class="form-control" placeholder="120" %}
+                                        <span class="input-group-text">mmHg</span>
+                                    </div>
+                                    {% if form.systolic_bp.errors %}
+                                    <div class="text-danger small mt-1">{{ form.systolic_bp.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label for="{{ form.diastolic_bp.id_for_label }}" class="form-label">
+                                        Diastolic BP <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.diastolic_bp class="form-control" placeholder="80" %}
+                                        <span class="input-group-text">mmHg</span>
+                                    </div>
+                                    <small class="text-muted">Normal: 120/80</small>
+                                    {% if form.diastolic_bp.errors %}
+                                    <div class="text-danger small mt-1">{{ form.diastolic_bp.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label for="{{ form.oxygen_saturation.id_for_label }}" class="form-label">
+                                        SpO2 (%) <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.oxygen_saturation class="form-control" placeholder="98" %}
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <small class="text-muted">Normal: >95%</small>
+                                    {% if form.oxygen_saturation.errors %}
+                                    <div class="text-danger small mt-1">{{ form.oxygen_saturation.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Anthropometry -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-rulers me-2 text-info"></i>Anthropometry
+                            </h5>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="{{ form.weight.id_for_label }}" class="form-label">
+                                        Weight (kg)
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.weight class="form-control" placeholder="70.0" step="0.1" %}
+                                        <span class="input-group-text">kg</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label for="{{ form.height.id_for_label }}" class="form-label">
+                                        Height (cm)
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.height class="form-control" placeholder="170" step="0.1" %}
+                                        <span class="input-group-text">cm</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label">BMI</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="bmiResult" readonly placeholder="Auto-calculated">
+                                        <span class="input-group-text">kg/m²</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clinical Assessment -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-clipboard2-pulse me-2 text-success"></i>Clinical Assessment
+                            </h5>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="{{ form.chief_complaint.id_for_label }}" class="form-label">
+                                        Chief Complaint <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.chief_complaint class="form-control" rows="3" %}
+                                    {% if form.chief_complaint.errors %}
+                                    <div class="text-danger small mt-1">{{ form.chief_complaint.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6">
+                                    <label for="{{ form.pain_scale.id_for_label }}" class="form-label">
+                                        Pain Scale (0-10)
+                                    </label>
+                                    <div class="input-group">
+                                        {% render_field form.pain_scale class="form-range" min="0" max="10" id="painScale" %}
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">No Pain (0)</small>
+                                        <strong id="painValue" class="text-primary">5</strong>
+                                        <small class="text-muted">Worst Pain (10)</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label for="{{ form.emergency_level.id_for_label }}" class="form-label">
+                                        Emergency Level <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.emergency_level class="form-select" id="emergencyLevel" %}
+                                    {% if form.emergency_level.errors %}
+                                    <div class="text-danger small mt-1">{{ form.emergency_level.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-12">
+                                    <label for="{{ form.triage_notes.id_for_label }}" class="form-label">
+                                        Nursing Assessment Notes <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.triage_notes class="form-control" rows="4" placeholder="Detailed nursing assessment and observations..." %}
+                                    {% if form.triage_notes.errors %}
+                                    <div class="text-danger small mt-1">{{ form.triage_notes.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                            <a href="{% url 'triage-queue' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle me-2"></i>Complete Triage
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Patient Info -->
+        <div class="col-lg-4">
+            <!-- Patient Card -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-person-vcard me-2"></i>Patient Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="avatar avatar-xl bg-gradient-primary rounded-circle d-inline-flex align-items-center justify-content-center">
+                            <i class="bi bi-person text-white" style="font-size: 3rem;"></i>
+                        </div>
+                    </div>
+                    <h5 class="text-center mb-3">{{ visit.patient.full_name }}</h5>
+                    
+                    <div class="mb-2">
+                        <strong>Patient #:</strong> {{ visit.patient.patient_number }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Visit #:</strong> {{ visit.visit_number }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Age:</strong> {{ visit.patient.age }} years
+                    </div>
+                    <div class="mb-2">
+                        <strong>Gender:</strong> {{ visit.patient.get_gender_display }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Phone:</strong> {{ visit.patient.phone_number }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Visit Type:</strong>
+                        {% if visit.visit_type == 'EMERGENCY' %}
+                        <span class="badge bg-danger">{{ visit.get_visit_type_display }}</span>
+                        {% else %}
+                        <span class="badge bg-info">{{ visit.get_visit_type_display }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Arrival:</strong> {{ visit.arrival_time|date:"H:i" }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Wait Time:</strong> 
+                        <span class="text-danger fw-bold">{{ visit.wait_time_minutes }} minutes</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medical Alerts -->
+            {% if visit.patient.allergies or visit.patient.chronic_conditions %}
+            <div class="card border-danger mb-3">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0 text-white">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Medical Alerts
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if visit.patient.allergies %}
+                    <div class="alert alert-warning mb-2">
+                        <strong>Allergies:</strong><br>
+                        {{ visit.patient.allergies }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if visit.patient.chronic_conditions %}
+                    <div class="alert alert-info mb-0">
+                        <strong>Chronic Conditions:</strong><br>
+                        {{ visit.patient.chronic_conditions }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Triage Guidelines -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Triage Guidelines</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <span class="badge bg-danger w-100 text-start py-2">
+                            <strong>CRITICAL</strong> - Immediate attention required
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-warning text-dark w-100 text-start py-2">
+                            <strong>EMERGENCY</strong> - Within 15 minutes
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-info w-100 text-start py-2">
+                            <strong>URGENT</strong> - Within 60 minutes
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-success w-100 text-start py-2">
+                            <strong>NORMAL</strong> - Within 4 hours
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .avatar-xl {
+        width: 100px;
+        height: 100px;
+    }
+    .form-range {
+        width: 100%;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // BMI Calculator
+    const weightInput = document.getElementById('{{ form.weight.id_for_label }}');
+    const heightInput = document.getElementById('{{ form.height.id_for_label }}');
+    const bmiResult = document.getElementById('bmiResult');
+    
+    function calculateBMI() {
+        const weight = parseFloat(weightInput.value);
+        const height = parseFloat(heightInput.value);
+        
+        if (weight && height) {
+            const heightInMeters = height / 100;
+            const bmi = (weight / (heightInMeters * heightInMeters)).toFixed(2);
+            bmiResult.value = bmi;
+            
+            // Add color coding
+            if (bmi < 18.5) {
+                bmiResult.className = 'form-control text-primary fw-bold';
+            } else if (bmi >= 18.5 && bmi < 25) {
+                bmiResult.className = 'form-control text-success fw-bold';
+            } else if (bmi >= 25 && bmi < 30) {
+                bmiResult.className = 'form-control text-warning fw-bold';
+            } else {
+                bmiResult.className = 'form-control text-danger fw-bold';
+            }
+        } else {
+            bmiResult.value = '';
+        }
+    }
+    
+    weightInput.addEventListener('input', calculateBMI);
+    heightInput.addEventListener('input', calculateBMI);
+    
+    // Pain Scale Display
+    const painScale = document.getElementById('painScale');
+    const painValue = document.getElementById('painValue');
+    
+    painScale.addEventListener('input', function() {
+        painValue.textContent = this.value;
+        
+        // Color code the pain value
+        if (this.value >= 7) {
+            painValue.className = 'text-danger fw-bold';
+        } else if (this.value >= 4) {
+            painValue.className = 'text-warning fw-bold';
+        } else {
+            painValue.className = 'text-success fw-bold';
+        }
+    });
+    
+    // Auto-set emergency level based on vitals (suggestions)
+    const temperatureInput = document.getElementById('{{ form.temperature.id_for_label }}');
+    const pulseInput = document.getElementById('{{ form.pulse.id_for_label }}');
+    const spo2Input = document.getElementById('{{ form.oxygen_saturation.id_for_label }}');
+    const emergencyLevel = document.getElementById('emergencyLevel');
+    
+    function suggestEmergencyLevel() {
+        const temp = parseFloat(temperatureInput.value);
+        const pulse = parseInt(pulseInput.value);
+        const spo2 = parseInt(spo2Input.value);
+        
+        // Critical indicators
+        if ((temp && (temp < 35 || temp > 40)) ||
+            (pulse && (pulse < 50 || pulse > 120)) ||
+            (spo2 && spo2 < 90)) {
+            if (!emergencyLevel.value || emergencyLevel.value === 'NORMAL') {
+                if (confirm('Vitals indicate critical condition. Set as CRITICAL?')) {
+                    emergencyLevel.value = 'CRITICAL';
+                }
+            }
+        }
+    }
+    
+    temperatureInput.addEventListener('blur', suggestEmergencyLevel);
+    pulseInput.addEventListener('blur', suggestEmergencyLevel);
+    spo2Input.addEventListener('blur', suggestEmergencyLevel);
+    
+    // Form validation
+    document.getElementById('triageForm').addEventListener('submit', function(e) {
+        const requiredFields = this.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields');
+            window.scrollTo(0, 0);
+        }
+    });
+});
+</script>
+{% endblock %}

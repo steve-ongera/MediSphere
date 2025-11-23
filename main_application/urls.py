@@ -50,5 +50,24 @@ urlpatterns = [
 
     # Search and autocomplete
     path('patients/api/search/', views.patient_search_api, name='patient-search-api'),
+    
+    # Visit Registration
+    path('visits/register/', views.visits_register, name='visits-register'),
+    
+    # Triage
+    path('visits/triage/queue/', views.triage_queue, name='triage-queue'),
+    path('visits/triage/<str:visit_number>/', views.triage_assessment, name='triage-assessment'),
+    
+    # Visits List & Details
+    path('visits/', views.visits_list, name='visits-list'),
+    path('visits/<str:visit_number>/', views.visits_detail, name='visits-detail'),
+    
+    # Patient Queue
+    path('visits/queue/consultation/', views.patient_queue, name='patient-queue'),
+    
+    # API Endpoints
+    path('visits/api/patient-search/', views.patient_search_for_visit, name='patient-search-for-visit'),
+    path('visits/api/statistics/', views.visit_statistics, name='visit-statistics'),
+    path('visits/api/<str:visit_number>/status/', views.visit_update_status, name='visit-update-status'),
   
 ]

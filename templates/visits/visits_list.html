@@ -1,0 +1,242 @@
+﻿
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}All Visits - MediSphere HMS{% endblock %}
+
+{% block content %}
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-list-check me-2"></i>All Visits</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item active">All Visits</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    
+
+    <!-- Main Card -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #2980b9 0%, #1a76d1 100%); color: white;">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <h5 class="card-title mb-0 text-white">
+                            <i class="bi bi-list-ul me-2"></i>Visit Records
+                        </h5>
+                        <div class="d-flex gap-2 mt-2 mt-md-0">
+                            <a href="{% url 'visits-register' %}" class="btn btn-light">
+                                <i class="bi bi-plus-circle me-2"></i>New Visit
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Filters -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <form method="GET" class="row g-2">
+                                <div class="col-md-3">
+                                    <input type="text" 
+                                           name="search" 
+                                           class="form-control" 
+                                           placeholder="Search visits..." 
+                                           value="{{ search_query }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <select name="status" class="form-select">
+                                        <option value="">All Status</option>
+                                        <option value="WAITING" {% if status_filter == 'WAITING' %}selected{% endif %}>Waiting</option>
+                                        <option value="TRIAGE" {% if status_filter == 'TRIAGE' %}selected{% endif %}>Triage</option>
+                                        <option value="CONSULTATION" {% if status_filter == 'CONSULTATION' %}selected{% endif %}>Consultation</option>
+                                        <option value="LABORATORY" {% if status_filter == 'LABORATORY' %}selected{% endif %}>Laboratory</option>
+                                        <option value="PHARMACY" {% if status_filter == 'PHARMACY' %}selected{% endif %}>Pharmacy</option>
+                                        <option value="BILLING" {% if status_filter == 'BILLING' %}selected{% endif %}>Billing</option>
+                                        <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <select name="visit_type" class="form-select">
+                                        <option value="">All Types</option>
+                                        <option value="OUTPATIENT" {% if visit_type_filter == 'OUTPATIENT' %}selected{% endif %}>Outpatient</option>
+                                        <option value="EMERGENCY" {% if visit_type_filter == 'EMERGENCY' %}selected{% endif %}>Emergency</option>
+                                        <option value="INPATIENT" {% if visit_type_filter == 'INPATIENT' %}selected{% endif %}>Inpatient</option>
+                                        <option value="REFERRAL" {% if visit_type_filter == 'REFERRAL' %}selected{% endif %}>Referral</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="date" 
+                                           name="date" 
+                                           class="form-control" 
+                                           value="{{ date_filter }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="bi bi-filter"></i> Filter
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    {% if search_query or status_filter or visit_type_filter or date_filter %}
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Filters applied
+                        <a href="{% url 'visits-list' %}" class="btn btn-sm btn-outline-info ms-2">Clear All</a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Visits Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Visit #</th>
+                                    <th>Date/Time</th>
+                                    <th>Patient</th>
+                                    <th>Type</th>
+                                    <th>Chief Complaint</th>
+                                    <th>Status</th>
+                                    <th>Wait Time</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for visit in visits %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ visit.visit_number }}</span>
+                                        {% if visit.is_referral %}
+                                        <span class="badge bg-warning text-dark ms-1" title="Referral">
+                                            <i class="bi bi-arrow-left-right"></i>
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ visit.visit_date|date:"d M Y" }}
+                                        <div class="text-muted small">{{ visit.arrival_time|date:"H:i" }}</div>
+                                    </td>
+                                    <td>
+                                        <strong>{{ visit.patient.full_name }}</strong>
+                                        <div class="text-muted small">
+                                            {{ visit.patient.patient_number }} | {{ visit.patient.age }}y
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if visit.visit_type == 'EMERGENCY' %}
+                                        <span class="badge bg-danger">{{ visit.get_visit_type_display }}</span>
+                                        {% elif visit.visit_type == 'AMBULANCE' %}
+                                        <span class="badge bg-warning">{{ visit.get_visit_type_display }}</span>
+                                        {% else %}
+                                        <span class="badge bg-info">{{ visit.get_visit_type_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ visit.chief_complaint|truncatewords:10 }}</td>
+                                    <td>
+                                        {% if visit.status == 'COMPLETED' %}
+                                        <span class="badge bg-success">{{ visit.get_status_display }}</span>
+                                        {% elif visit.status == 'CANCELLED' %}
+                                        <span class="badge bg-secondary">{{ visit.get_status_display }}</span>
+                                        {% elif visit.status == 'WAITING' %}
+                                        <span class="badge bg-warning">{{ visit.get_status_display }}</span>
+                                        {% else %}
+                                        <span class="badge bg-primary">{{ visit.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if visit.status != 'COMPLETED' %}
+                                        <span class="{% if visit.wait_time_minutes > 60 %}text-danger fw-bold{% endif %}">
+                                            {{ visit.wait_time_minutes }} min
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'visits-detail' visit.visit_number %}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-5">
+                                        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                                        <p class="text-muted mt-3">No visits found</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if visits.paginator.num_pages > 1 %}
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="text-muted">
+                            Showing {{ visits.start_index }} to {{ visits.end_index }} of {{ visits.paginator.count }} visits
+                        </div>
+                        <nav>
+                            <ul class="pagination mb-0">
+                                {% if visits.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if visit_type_filter %}&visit_type={{ visit_type_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">
+                                        <i class="bi bi-chevron-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ visits.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if visit_type_filter %}&visit_type={{ visit_type_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in visits.paginator.page_range %}
+                                    {% if visits.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > visits.number|add:'-3' and num < visits.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if visit_type_filter %}&visit_type={{ visit_type_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if visits.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ visits.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if visit_type_filter %}&visit_type={{ visit_type_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ visits.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if visit_type_filter %}&visit_type={{ visit_type_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">
+                                        <i class="bi bi-chevron-double-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .card-icon {
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+    }
+</style>
+{% endblock %}

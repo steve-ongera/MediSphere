@@ -1872,3 +1872,443 @@ def export_patients_csv(queryset, search_query=''):
     
     return response
 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Avg
+from django.http import JsonResponse
+from django.utils import timezone
+from datetime import datetime, timedelta
+
+from .models import (
+    PatientVisit, Patient, TriageAssessment, 
+    Consultation, User, Invoice
+)
+from .forms import PatientVisitForm, TriageAssessmentForm
+
+
+# =============================================================================
+# REGISTER VISIT
+# =============================================================================
+
+@login_required
+def visits_register(request):
+    """
+    Register a new patient visit
+    """
+    if request.method == 'POST':
+        form = PatientVisitForm(request.POST)
+        
+        if form.is_valid():
+            visit = form.save()
+            
+            messages.success(
+                request,
+                f'Visit {visit.visit_number} registered successfully for {visit.patient.full_name}!'
+            )
+            
+            # Redirect based on visit type
+            if visit.visit_type in ['EMERGENCY', 'AMBULANCE']:
+                return redirect('triage-assessment', visit_number=visit.visit_number)
+            else:
+                return redirect('visits-detail', visit_number=visit.visit_number)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = PatientVisitForm()
+    
+    # Get recent patients for quick selection
+    recent_patients = Patient.objects.filter(is_active=True).order_by('-registration_date')[:10]
+    
+    context = {
+        'form': form,
+        'recent_patients': recent_patients,
+        'page_title': 'Register Patient Visit',
+    }
+    
+    return render(request, 'visits/visits_register.html', context)
+
+
+# =============================================================================
+# TRIAGE QUEUE
+# =============================================================================
+
+@login_required
+def triage_queue(request):
+    """
+    Display triage queue - patients waiting for triage assessment
+    """
+    # Get visits awaiting triage
+    pending_triage = PatientVisit.objects.filter(
+        status__in=['WAITING', 'TRIAGE'],
+        visit_date=timezone.now().date()
+    ).select_related('patient').order_by('priority_level', 'arrival_time')
+    
+    # Get completed triages today
+    completed_today = TriageAssessment.objects.filter(
+        assessment_time__date=timezone.now().date()
+    ).select_related('visit__patient', 'nurse').order_by('-assessment_time')[:10]
+    
+    # Statistics
+    total_waiting = pending_triage.filter(status='WAITING').count()
+    in_triage = pending_triage.filter(status='TRIAGE').count()
+    
+    # Critical cases
+    critical_cases = pending_triage.filter(priority_level__lte=2)
+    
+    context = {
+        'pending_triage': pending_triage,
+        'completed_today': completed_today,
+        'total_waiting': total_waiting,
+        'in_triage': in_triage,
+        'critical_cases': critical_cases,
+        'page_title': 'Triage Queue',
+    }
+    
+    return render(request, 'visits/triage_queue.html', context)
+
+
+@login_required
+def triage_assessment(request, visit_number):
+    """
+    Perform triage assessment
+    """
+    visit = get_object_or_404(
+        PatientVisit.objects.select_related('patient'),
+        visit_number=visit_number
+    )
+    
+    # Check if triage already exists
+    try:
+        triage = visit.triage
+        is_update = True
+    except TriageAssessment.DoesNotExist:
+        triage = None
+        is_update = False
+    
+    if request.method == 'POST':
+        if is_update:
+            form = TriageAssessmentForm(request.POST, instance=triage)
+        else:
+            form = TriageAssessmentForm(request.POST)
+        
+        if form.is_valid():
+            triage = form.save(commit=False)
+            triage.visit = visit
+            triage.nurse = request.user
+            triage.save()
+            
+            # Update visit status
+            visit.status = 'CONSULTATION'
+            visit.priority_level = {
+                'CRITICAL': 1,
+                'EMERGENCY': 2,
+                'URGENT': 3,
+                'NORMAL': 4,
+            }.get(triage.emergency_level, 4)
+            visit.save()
+            
+            messages.success(
+                request,
+                f'Triage assessment completed for {visit.patient.full_name}. Patient moved to consultation queue.'
+            )
+            return redirect('triage-queue')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        if is_update:
+            form = TriageAssessmentForm(instance=triage)
+        else:
+            form = TriageAssessmentForm(initial={
+                'chief_complaint': visit.chief_complaint,
+            })
+    
+    context = {
+        'form': form,
+        'visit': visit,
+        'is_update': is_update,
+        'page_title': f'Triage Assessment - {visit.patient.full_name}',
+    }
+    
+    return render(request, 'visits/triage_assessment.html', context)
+
+
+# =============================================================================
+# ALL VISITS LIST
+# =============================================================================
+
+@login_required
+def visits_list(request):
+    """
+    Display all patient visits with filtering
+    """
+    # Get filter parameters
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', '')
+    visit_type_filter = request.GET.get('visit_type', '')
+    date_filter = request.GET.get('date', '')
+    
+    # Base queryset
+    visits = PatientVisit.objects.select_related('patient').order_by('-visit_date', '-arrival_time')
+    
+    # Apply filters
+    if search_query:
+        visits = visits.filter(
+            Q(visit_number__icontains=search_query) |
+            Q(patient__patient_number__icontains=search_query) |
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query) |
+            Q(patient__phone_number__icontains=search_query)
+        )
+    
+    if status_filter:
+        visits = visits.filter(status=status_filter)
+    
+    if visit_type_filter:
+        visits = visits.filter(visit_type=visit_type_filter)
+    
+    if date_filter:
+        try:
+            filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
+            visits = visits.filter(visit_date=filter_date)
+        except ValueError:
+            pass
+    
+    # Pagination
+    paginator = Paginator(visits, 25)
+    page_number = request.GET.get('page', 1)
+    visits_page = paginator.get_page(page_number)
+    
+    # Statistics
+    total_visits = visits.count()
+    today_visits = PatientVisit.objects.filter(visit_date=timezone.now().date()).count()
+    active_visits = visits.filter(status__in=['WAITING', 'TRIAGE', 'CONSULTATION']).count()
+    
+    context = {
+        'visits': visits_page,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'visit_type_filter': visit_type_filter,
+        'date_filter': date_filter,
+        'total_visits': total_visits,
+        'today_visits': today_visits,
+        'active_visits': active_visits,
+        'page_title': 'All Visits',
+    }
+    
+    return render(request, 'visits/visits_list.html', context)
+
+
+# =============================================================================
+# VISIT DETAIL VIEW
+# =============================================================================
+
+@login_required
+def visits_detail(request, visit_number):
+    """
+    Display detailed visit information
+    """
+    visit = get_object_or_404(
+        PatientVisit.objects.select_related('patient'),
+        visit_number=visit_number
+    )
+    
+    # Get related records
+    try:
+        triage = visit.triage
+    except TriageAssessment.DoesNotExist:
+        triage = None
+    
+    consultations = visit.consultations.select_related('doctor').order_by('-consultation_start')
+    clinical_notes = visit.clinical_notes.select_related('clinician').order_by('-created_at')
+    lab_orders = visit.lab_orders.select_related('test', 'ordered_by').order_by('-ordered_at')
+    radiology_orders = visit.radiology_orders.select_related('test', 'ordered_by').order_by('-ordered_at')
+    prescriptions = visit.prescriptions.prefetch_related('items__drug').order_by('-prescribed_at')
+    
+    try:
+        invoice = visit.invoice
+    except Invoice.DoesNotExist:
+        invoice = None
+    
+    try:
+        admission = visit.admission
+    except:
+        admission = None
+    
+    context = {
+        'visit': visit,
+        'triage': triage,
+        'consultations': consultations,
+        'clinical_notes': clinical_notes,
+        'lab_orders': lab_orders,
+        'radiology_orders': radiology_orders,
+        'prescriptions': prescriptions,
+        'invoice': invoice,
+        'admission': admission,
+        'page_title': f'Visit Details - {visit.visit_number}',
+    }
+    
+    return render(request, 'visits/visits_detail.html', context)
+
+
+# =============================================================================
+# PATIENT QUEUE (Waiting for Consultation)
+# =============================================================================
+
+@login_required
+def patient_queue(request):
+    """
+    Display patients waiting for consultation
+    """
+    # Get doctor's role
+    user_role = request.user.role.name if request.user.role else None
+    
+    # Base query - patients ready for consultation
+    queue = PatientVisit.objects.filter(
+        status='CONSULTATION',
+        visit_date=timezone.now().date()
+    ).select_related('patient').order_by('priority_level', 'arrival_time')
+    
+    # Get consultations in progress
+    in_consultation = PatientVisit.objects.filter(
+        status='CONSULTATION',
+        visit_date=timezone.now().date(),
+        consultations__consultation_end__isnull=True
+    ).select_related('patient').distinct()
+    
+    # Statistics
+    total_waiting = queue.count()
+    average_wait_time = queue.aggregate(Avg('wait_time_minutes'))['wait_time_minutes__avg'] or 0
+    
+    # Priority breakdown
+    critical = queue.filter(priority_level=1).count()
+    emergency = queue.filter(priority_level=2).count()
+    urgent = queue.filter(priority_level=3).count()
+    normal = queue.filter(priority_level__gte=4).count()
+    
+    context = {
+        'queue': queue,
+        'in_consultation': in_consultation,
+        'total_waiting': total_waiting,
+        'average_wait_time': round(average_wait_time, 1),
+        'critical': critical,
+        'emergency': emergency,
+        'urgent': urgent,
+        'normal': normal,
+        'page_title': 'Patient Queue',
+    }
+    
+    return render(request, 'visits/patient_queue.html', context)
+
+
+# =============================================================================
+# UPDATE VISIT STATUS
+# =============================================================================
+
+@login_required
+def visit_update_status(request, visit_number):
+    """
+    Update visit status (AJAX)
+    """
+    if request.method == 'POST':
+        visit = get_object_or_404(PatientVisit, visit_number=visit_number)
+        new_status = request.POST.get('status')
+        
+        if new_status in dict(PatientVisit.STATUS_CHOICES):
+            old_status = visit.status
+            visit.status = new_status
+            
+            # Set exit time if completing visit
+            if new_status == 'COMPLETED' and not visit.exit_time:
+                visit.exit_time = timezone.now()
+            
+            visit.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Visit status updated from {old_status} to {new_status}',
+                'new_status': new_status,
+                'new_status_display': visit.get_status_display()
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid status'
+            }, status=400)
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+# =============================================================================
+# PATIENT SEARCH API (for visit registration)
+# =============================================================================
+
+@login_required
+def patient_search_for_visit(request):
+    """
+    API endpoint for patient search during visit registration
+    """
+    query = request.GET.get('q', '').strip()
+    
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    patients = Patient.objects.filter(
+        Q(patient_number__icontains=query) |
+        Q(first_name__icontains=query) |
+        Q(last_name__icontains=query) |
+        Q(id_number__icontains=query) |
+        Q(phone_number__icontains=query),
+        is_active=True
+    )[:10]
+    
+    results = [{
+        'id': p.id,
+        'patient_number': p.patient_number,
+        'name': p.full_name,
+        'id_number': p.id_number or 'N/A',
+        'phone': p.phone_number,
+        'age': p.age,
+        'gender': p.get_gender_display(),
+        'last_visit': p.visits.order_by('-visit_date').first().visit_date.strftime('%Y-%m-%d') if p.visits.exists() else 'Never',
+    } for p in patients]
+    
+    return JsonResponse({'results': results})
+
+
+# =============================================================================
+# DASHBOARD STATISTICS
+# =============================================================================
+
+@login_required
+def visit_statistics(request):
+    """
+    Get visit statistics for dashboard
+    """
+    today = timezone.now().date()
+    
+    # Today's statistics
+    today_visits = PatientVisit.objects.filter(visit_date=today)
+    total_today = today_visits.count()
+    emergency_today = today_visits.filter(visit_type='EMERGENCY').count()
+    completed_today = today_visits.filter(status='COMPLETED').count()
+    
+    # This week's statistics
+    week_start = today - timedelta(days=today.weekday())
+    week_visits = PatientVisit.objects.filter(visit_date__gte=week_start)
+    
+    # Average wait time
+    avg_wait = today_visits.aggregate(Avg('wait_time_minutes'))['wait_time_minutes__avg'] or 0
+    
+    stats = {
+        'total_today': total_today,
+        'emergency_today': emergency_today,
+        'completed_today': completed_today,
+        'week_total': week_visits.count(),
+        'average_wait_time': round(avg_wait, 1),
+        'pending_triage': today_visits.filter(status='WAITING').count(),
+        'in_consultation': today_visits.filter(status='CONSULTATION').count(),
+    }
+    
+    return JsonResponse(stats)

@@ -327,3 +327,241 @@ class PatientRegistrationForm(forms.ModelForm):
                 )
         
         return cleaned_data
+    
+    
+from django import forms
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from .models import PatientVisit, TriageAssessment, Patient
+
+
+class PatientVisitForm(forms.ModelForm):
+    """Form for registering a new patient visit"""
+    
+    class Meta:
+        model = PatientVisit
+        fields = [
+            'patient',
+            'visit_type',
+            'priority_level',
+            'chief_complaint',
+            'is_referral',
+            'referring_facility',
+            'referral_notes',
+        ]
+        widgets = {
+            'patient': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True,
+            }),
+            'visit_type': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True,
+            }),
+            'priority_level': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True,
+            }),
+            'chief_complaint': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'required': True,
+                'placeholder': 'Enter patient\'s main complaint...',
+            }),
+            'is_referral': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
+            }),
+            'referring_facility': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Name of referring hospital/clinic',
+            }),
+            'referral_notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Reason for referral and notes',
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Only show active patients
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True).order_by('first_name', 'last_name')
+        
+        # Set priority level choices with descriptions
+        self.fields['priority_level'].choices = [
+            (1, '1 - Critical (Immediate)'),
+            (2, '2 - Emergency (< 15 min)'),
+            (3, '3 - Urgent (< 60 min)'),
+            (4, '4 - Normal (< 4 hours)'),
+            (5, '5 - Low Priority'),
+        ]
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        is_referral = cleaned_data.get('is_referral')
+        referring_facility = cleaned_data.get('referring_facility')
+        
+        # If referral is checked, facility name is required
+        if is_referral and not referring_facility:
+            raise ValidationError({
+                'referring_facility': 'Referring facility is required for referral cases.'
+            })
+        
+        return cleaned_data
+
+
+class TriageAssessmentForm(forms.ModelForm):
+    """Form for triage assessment"""
+    
+    class Meta:
+        model = TriageAssessment
+        fields = [
+            'temperature',
+            'pulse',
+            'systolic_bp',
+            'diastolic_bp',
+            'respiratory_rate',
+            'oxygen_saturation',
+            'weight',
+            'height',
+            'chief_complaint',
+            'pain_scale',
+            'emergency_level',
+            'triage_notes',
+        ]
+        widgets = {
+            'temperature': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.1',
+                'min': '35.0',
+                'max': '45.0',
+                'required': True,
+                'placeholder': '36.5',
+            }),
+            'pulse': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '40',
+                'max': '200',
+                'required': True,
+                'placeholder': '72',
+            }),
+            'systolic_bp': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '70',
+                'max': '250',
+                'required': True,
+                'placeholder': '120',
+            }),
+            'diastolic_bp': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '40',
+                'max': '150',
+                'required': True,
+                'placeholder': '80',
+            }),
+            'respiratory_rate': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '10',
+                'max': '60',
+                'required': True,
+                'placeholder': '16',
+            }),
+            'oxygen_saturation': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '70',
+                'max': '100',
+                'required': True,
+                'placeholder': '98',
+            }),
+            'weight': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.1',
+                'placeholder': '70.0',
+            }),
+            'height': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'step': '0.1',
+                'placeholder': '170',
+            }),
+            'chief_complaint': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'required': True,
+            }),
+            'pain_scale': forms.NumberInput(attrs={
+                'class': 'form-range',
+                'type': 'range',
+                'min': '0',
+                'max': '10',
+                'value': '5',
+            }),
+            'emergency_level': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True,
+            }),
+            'triage_notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'required': True,
+                'placeholder': 'Detailed nursing assessment and observations...',
+            }),
+        }
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # Validate blood pressure
+        systolic = cleaned_data.get('systolic_bp')
+        diastolic = cleaned_data.get('diastolic_bp')
+        
+        if systolic and diastolic:
+            if systolic <= diastolic:
+                raise ValidationError({
+                    'systolic_bp': 'Systolic BP must be greater than diastolic BP.'
+                })
+        
+        # Warn about critical vitals
+        temp = cleaned_data.get('temperature')
+        pulse = cleaned_data.get('pulse')
+        spo2 = cleaned_data.get('oxygen_saturation')
+        emergency_level = cleaned_data.get('emergency_level')
+        
+        # Auto-suggest critical if vitals are critical but level is not set
+        is_critical_vitals = (
+            (temp and (temp < 35.0 or temp > 40.0)) or
+            (pulse and (pulse < 50 or pulse > 120)) or
+            (spo2 and spo2 < 90)
+        )
+        
+        if is_critical_vitals and emergency_level not in ['CRITICAL', 'EMERGENCY']:
+            self.add_error(
+                'emergency_level',
+                'Warning: Vital signs indicate critical/emergency condition. Please review emergency level.'
+            )
+        
+        return cleaned_data
+
+
+class QuickTriageForm(forms.ModelForm):
+    """Simplified triage form for quick assessment"""
+    
+    class Meta:
+        model = TriageAssessment
+        fields = [
+            'temperature',
+            'pulse',
+            'systolic_bp',
+            'diastolic_bp',
+            'oxygen_saturation',
+            'emergency_level',
+            'triage_notes',
+        ]
+        widgets = {
+            'temperature': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1'}),
+            'pulse': forms.NumberInput(attrs={'class': 'form-control'}),
+            'systolic_bp': forms.NumberInput(attrs={'class': 'form-control'}),
+            'diastolic_bp': forms.NumberInput(attrs={'class': 'form-control'}),
+            'oxygen_saturation': forms.NumberInput(attrs={'class': 'form-control'}),
+            'emergency_level': forms.Select(attrs={'class': 'form-select'}),
+            'triage_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }

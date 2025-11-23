@@ -40,29 +40,44 @@
                 <span>Patient Visits</span>
                 <i class="bi bi-chevron-down ms-auto"></i>
             </a>
+
             <ul id="visits-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+
+                <!-- Register Visit -->
                 <li>
-                    <a href="#">
-                        <i class="bi bi-clipboard-plus" style="color: #1a76d1;"></i> Register Visit
+                    <a href="{% url 'visits-register' %}">
+                        <i class="bi bi-clipboard-plus" style="color: #1a76d1;"></i>
+                        Register Visit
                     </a>
                 </li>
+
+                <!-- Triage Queue -->
                 <li>
-                    <a href="#">
-                        <i class="bi bi-thermometer" style="color: #1a76d1;"></i> Triage Queue
+                    <a href="{% url 'triage-queue' %}">
+                        <i class="bi bi-thermometer" style="color: #1a76d1;"></i>
+                        Triage Queue
                     </a>
                 </li>
+
+                <!-- All Visits -->
                 <li>
-                    <a href="#">
-                        <i class="bi bi-list-check" style="color: #1a76d1;"></i> All Visits
+                    <a href="{% url 'visits-list' %}">
+                        <i class="bi bi-list-check" style="color: #1a76d1;"></i>
+                        All Visits
                     </a>
                 </li>
+
+                <!-- Patient Queue -->
                 <li>
-                    <a href="#">
-                        <i class="bi bi-hourglass-split" style="color: #1a76d1;"></i> Patient Queue
+                    <a href="{% url 'patient-queue' %}">
+                        <i class="bi bi-hourglass-split" style="color: #1a76d1;"></i>
+                        Patient Queue
                     </a>
                 </li>
+
             </ul>
         </li>
+
 
         <!-- Clinical Services -->
         <li class="nav-item">

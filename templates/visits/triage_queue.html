@@ -1,0 +1,242 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Triage Queue - MediSphere HMS{% endblock %}
+
+{% block content %}
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-thermometer me-2"></i>Triage Queue</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'visits-list' %}">Visits</a></li>
+            <li class="breadcrumb-item active">Triage Queue</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Waiting for Triage</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #fff3e0; color: #ff9800;">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ total_waiting }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">In Triage</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #e3f2fd; color: #2196f3;">
+                            <i class="bi bi-activity"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ in_triage }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Critical Cases</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #ffebee; color: #f44336;">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ critical_cases.count }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Completed Today</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #e8f5e9; color: #4caf50;">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ completed_today.count }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pending Triage -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #2980b9 0%, #1a76d1 100%); color: white;">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-list-check me-2"></i>Patients Awaiting Triage
+                    </h5>
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if pending_triage %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Queue #</th>
+                                    <th>Patient</th>
+                                    <th>Visit Type</th>
+                                    <th>Chief Complaint</th>
+                                    <th>Wait Time</th>
+                                    <th>Priority</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for visit in pending_triage %}
+                                <tr class="{% if visit.priority_level <= 2 %}table-danger{% endif %}">
+                                    <td>
+                                        <span class="badge bg-secondary">Q{{ visit.queue_number }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ visit.patient.full_name }}</strong>
+                                        <div class="text-muted small">
+                                            {{ visit.patient.patient_number }} | {{ visit.patient.age }}y | {{ visit.patient.get_gender_display }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if visit.visit_type == 'EMERGENCY' %}
+                                        <span class="badge bg-danger">{{ visit.get_visit_type_display }}</span>
+                                        {% elif visit.visit_type == 'AMBULANCE' %}
+                                        <span class="badge bg-warning">{{ visit.get_visit_type_display }}</span>
+                                        {% else %}
+                                        <span class="badge bg-info">{{ visit.get_visit_type_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ visit.chief_complaint|truncatewords:8 }}</td>
+                                    <td>
+                                        <span class="{% if visit.wait_time_minutes > 60 %}text-danger{% endif %}">
+                                            {{ visit.wait_time_minutes }} min
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if visit.priority_level == 1 %}
+                                        <span class="badge bg-danger">Critical</span>
+                                        {% elif visit.priority_level == 2 %}
+                                        <span class="badge bg-warning">Emergency</span>
+                                        {% elif visit.priority_level == 3 %}
+                                        <span class="badge bg-info">Urgent</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Normal</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'triage-assessment' visit.visit_number %}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="bi bi-clipboard-pulse"></i> Assess
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle" style="font-size: 3rem; color: #4caf50;"></i>
+                        <p class="text-muted mt-3">No patients waiting for triage</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recently Completed -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-check2-all me-2"></i>Recently Completed</h6>
+                </div>
+                
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 600px; overflow-y: auto;">
+                        {% for triage in completed_today %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ triage.visit.patient.full_name }}</h6>
+                                <small>{{ triage.assessment_time|date:"H:i" }}</small>
+                            </div>
+                            <p class="mb-1 small">{{ triage.visit.patient.patient_number }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">By: {{ triage.nurse.get_full_name }}</small>
+                                {% if triage.emergency_level == 'CRITICAL' %}
+                                <span class="badge bg-danger">Critical</span>
+                                {% elif triage.emergency_level == 'EMERGENCY' %}
+                                <span class="badge bg-warning">Emergency</span>
+                                {% elif triage.emergency_level == 'URGENT' %}
+                                <span class="badge bg-info">Urgent</span>
+                                {% else %}
+                                <span class="badge bg-success">Normal</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item text-center text-muted">
+                            No triages completed today
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .card-icon {
+        width: 56px;
+        height: 56px;
+        font-size: 24px;
+    }
+    .table-danger {
+        background-color: #ffebee !important;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh every 30 seconds
+    setInterval(function() {
+        location.reload();
+    }, 30000);
+    
+    // Show notification sound for critical cases
+    const criticalCount = {{ critical_cases.count }};
+    if (criticalCount > 0) {
+        // You can add notification sound here
+        console.log(`${criticalCount} critical case(s) in queue`);
+    }
+});
+</script>
+{% endblock %}

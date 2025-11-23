@@ -1,0 +1,357 @@
+﻿
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Patient Queue - MediSphere HMS{% endblock %}
+
+{% block content %}
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-hourglass-split me-2"></i>Patient Queue</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'visits-list' %}">Visits</a></li>
+            <li class="breadcrumb-item active">Patient Queue</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Waiting</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #fff3e0; color: #ff9800;">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ total_waiting }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-2">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Critical</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #ffebee; color: #f44336;">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ critical }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-2">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Emergency</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #fff9e6; color: #ffa726;">
+                            <i class="bi bi-exclamation-circle-fill"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ emergency }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-2">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Urgent</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #e1f5fe; color: #29b6f6;">
+                            <i class="bi bi-info-circle-fill"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ urgent }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-2">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Normal</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #f3e5f5; color: #ab47bc;">
+                            <i class="bi bi-dash-circle-fill"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ normal }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-2">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Avg Wait</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #e8f5e9; color: #66bb6a;">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ average_wait_time }} min</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Waiting Queue -->
+        <div class="col-lg-9">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #2980b9 0%, #1a76d1 100%); color: white;">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-people me-2"></i>Patients Waiting for Consultation
+                    </h5>
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if queue %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Queue</th>
+                                    <th>Patient</th>
+                                    <th>Age/Gender</th>
+                                    <th>Priority</th>
+                                    <th>Chief Complaint</th>
+                                    <th>Vitals</th>
+                                    <th>Wait Time</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for visit in queue %}
+                                <tr class="{% if visit.priority_level == 1 %}table-danger{% elif visit.priority_level == 2 %}table-warning{% endif %}">
+                                    <td>
+                                        <span class="badge bg-secondary fs-6">{{ visit.queue_number }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ visit.patient.full_name }}</strong>
+                                        <div class="text-muted small">{{ visit.patient.patient_number }}</div>
+                                    </td>
+                                    <td>
+                                        {{ visit.patient.age }}y / 
+                                        {% if visit.patient.gender == 'MALE' %}
+                                        <i class="bi bi-gender-male text-info"></i>
+                                        {% else %}
+                                        <i class="bi bi-gender-female text-danger"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if visit.priority_level == 1 %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-exclamation-triangle-fill"></i> Critical
+                                        </span>
+                                        {% elif visit.priority_level == 2 %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-exclamation-circle-fill"></i> Emergency
+                                        </span>
+                                        {% elif visit.priority_level == 3 %}
+                                        <span class="badge bg-info">
+                                            <i class="bi bi-info-circle-fill"></i> Urgent
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Normal</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ visit.chief_complaint|truncatewords:8 }}</td>
+                                    <td>
+                                        {% if visit.triage %}
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#vitalsModal{{ visit.id }}">
+                                            <i class="bi bi-activity"></i> View
+                                        </button>
+                                        {% else %}
+                                        <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="{% if visit.wait_time_minutes > 90 %}text-danger fw-bold{% elif visit.wait_time_minutes > 60 %}text-warning fw-bold{% endif %}">
+                                            {{ visit.wait_time_minutes }} min
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'consultation-start' visit.visit_number %}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="bi bi-play-circle"></i> Start
+                                        </a>
+                                    </td>
+                                </tr>
+
+                                <!-- Vitals Modal -->
+                                {% if visit.triage %}
+                                <div class="modal fade" id="vitalsModal{{ visit.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Vital Signs - {{ visit.patient.full_name }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <strong>Temperature:</strong><br>
+                                                        <span class="fs-5">{{ visit.triage.temperature }}°C</span>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <strong>Pulse:</strong><br>
+                                                        <span class="fs-5">{{ visit.triage.pulse }} BPM</span>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <strong>Blood Pressure:</strong><br>
+                                                        <span class="fs-5">{{ visit.triage.systolic_bp }}/{{ visit.triage.diastolic_bp }}</span>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <strong>SpO2:</strong><br>
+                                                        <span class="fs-5">{{ visit.triage.oxygen_saturation }}%</span>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <strong>Resp. Rate:</strong><br>
+                                                        <span class="fs-5">{{ visit.triage.respiratory_rate }}/min</span>
+                                                    </div>
+                                                    {% if visit.triage.weight %}
+                                                    <div class="col-6 mb-3">
+                                                        <strong>Weight:</strong><br>
+                                                        <span class="fs-5">{{ visit.triage.weight }} kg</span>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="alert alert-{{ visit.triage.emergency_level|lower }} mt-3">
+                                                    <strong>Triage Level:</strong> {{ visit.triage.get_emergency_level_display }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle" style="font-size: 3rem; color: #4caf50;"></i>
+                        <p class="text-muted mt-3">No patients in queue</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- In Consultation -->
+        <div class="col-lg-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0 text-white">
+                        <i class="bi bi-person-check me-2"></i>In Consultation
+                    </h6>
+                </div>
+                
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 600px; overflow-y: auto;">
+                        {% for visit in in_consultation %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ visit.patient.full_name }}</h6>
+                                <small>Q{{ visit.queue_number }}</small>
+                            </div>
+                            <p class="mb-1 small text-muted">{{ visit.patient.patient_number }}</p>
+                            <small class="text-success">
+                                <i class="bi bi-circle-fill"></i> In progress
+                            </small>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item text-center text-muted">
+                            No consultations in progress
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'visits-register' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle me-2"></i>New Visit
+                        </a>
+                        <a href="{% url 'triage-queue' %}" class="btn btn-outline-info">
+                            <i class="bi bi-thermometer me-2"></i>Triage Queue
+                        </a>
+                        <button class="btn btn-outline-secondary" onclick="window.print()">
+                            <i class="bi bi-printer me-2"></i>Print Queue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .card-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+    }
+    .table-danger {
+        background-color: #ffebee !important;
+    }
+    .table-warning {
+        background-color: #fff9e6 !important;
+    }
+    @media print {
+        .btn, .card-header, nav, .pagetitle { display: none; }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-refresh every 60 seconds
+    setTimeout(function() {
+        location.reload();
+    }, 60000);
+    
+    // Play sound for critical patients
+    const criticalCount = {{ critical }};
+    if (criticalCount > 0) {
+        console.log(`Alert: ${criticalCount} critical patient(s) in queue`);
+    }
+});
+</script>
+{% endblock %}
