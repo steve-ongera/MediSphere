@@ -1491,3 +1491,384 @@ def error_403(request, exception):
 
 def error_400(request, exception):
     return render(request, 'errors/400.html', status=400)
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
+import csv
+from datetime import datetime
+
+from .models import Patient, User
+from .forms import PatientRegistrationForm  # You'll need to create this
+
+
+# =============================================================================
+# PATIENT LIST VIEW (with Search & Export)
+# =============================================================================
+
+@login_required
+def patients_list(request):
+    """
+    Display all patients with search functionality and pagination
+    """
+    # Get search query
+    search_query = request.GET.get('search', '').strip()
+    
+    # Base queryset
+    patients = Patient.objects.filter(is_active=True).select_related('registered_by')
+    
+    # Apply search filters
+    if search_query:
+        patients = patients.filter(
+            Q(patient_number__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(middle_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(id_number__icontains=search_query) |
+            Q(phone_number__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(nhif_number__icontains=search_query)
+        )
+    
+    # Order by most recent
+    patients = patients.order_by('-registration_date')
+    
+    # Handle export requests
+    export_format = request.GET.get('export')
+    if export_format == 'excel':
+        return export_patients_excel(patients, search_query)
+    elif export_format == 'csv':
+        return export_patients_csv(patients, search_query)
+    
+    # Pagination
+    paginator = Paginator(patients, 25)  # 25 patients per page
+    page_number = request.GET.get('page', 1)
+    patients_page = paginator.get_page(page_number)
+    
+    context = {
+        'patients': patients_page,
+        'search_query': search_query,
+        'total_patients': patients.count(),
+        'page_title': 'Patient Records',
+    }
+    
+    return render(request, 'patients/patients_list.html', context)
+
+
+# =============================================================================
+# PATIENT REGISTRATION
+# =============================================================================
+
+@login_required
+def patients_create(request):
+    """
+    Register a new patient
+    """
+    if request.method == 'POST':
+        form = PatientRegistrationForm(request.POST)
+        
+        if form.is_valid():
+            patient = form.save(commit=False)
+            patient.registered_by = request.user
+            patient.save()
+            
+            messages.success(
+                request, 
+                f'Patient {patient.full_name} successfully registered with number {patient.patient_number}!'
+            )
+            return redirect('patients-detail', patient_number=patient.patient_number)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = PatientRegistrationForm()
+    
+    context = {
+        'form': form,
+        'page_title': 'New Patient Registration',
+    }
+    
+    return render(request, 'patients/patients_create.html', context)
+
+
+# =============================================================================
+# PATIENT DETAIL VIEW
+# =============================================================================
+
+@login_required
+def patients_detail(request, patient_number):
+    """
+    View detailed patient information using patient number
+    """
+    patient = get_object_or_404(
+        Patient.objects.select_related('registered_by'),
+        patient_number=patient_number,
+        is_active=True
+    )
+    
+    # Get patient's recent visits
+    recent_visits = patient.visits.all().order_by('-visit_date')[:10]
+    
+    # Get patient's prescriptions
+    recent_prescriptions = patient.visits.filter(
+        prescriptions__isnull=False
+    ).order_by('-visit_date')[:5]
+    
+    # Get patient's invoices
+    recent_invoices = patient.invoices.all().order_by('-invoice_date')[:10]
+    
+    # Get patient's admissions
+    admissions = patient.admissions.all().order_by('-admission_datetime')[:5]
+    
+    # Calculate statistics
+    total_visits = patient.visits.count()
+    total_amount_billed = sum(invoice.total_amount for invoice in patient.invoices.all())
+    total_amount_paid = sum(invoice.amount_paid for invoice in patient.invoices.all())
+    outstanding_balance = sum(invoice.balance for invoice in patient.invoices.all())
+    
+    context = {
+        'patient': patient,
+        'recent_visits': recent_visits,
+        'recent_prescriptions': recent_prescriptions,
+        'recent_invoices': recent_invoices,
+        'admissions': admissions,
+        'total_visits': total_visits,
+        'total_amount_billed': total_amount_billed,
+        'total_amount_paid': total_amount_paid,
+        'outstanding_balance': outstanding_balance,
+        'page_title': f'Patient: {patient.full_name}',
+    }
+    
+    return render(request, 'patients/patients_detail.html', context)
+
+
+# =============================================================================
+# PATIENT UPDATE
+# =============================================================================
+
+@login_required
+def patients_update(request, patient_number):
+    """
+    Update patient information
+    """
+    patient = get_object_or_404(Patient, patient_number=patient_number, is_active=True)
+    
+    if request.method == 'POST':
+        form = PatientRegistrationForm(request.POST, instance=patient)
+        
+        if form.is_valid():
+            patient = form.save()
+            messages.success(request, f'Patient {patient.full_name} updated successfully!')
+            return redirect('patients-detail', patient_number=patient.patient_number)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = PatientRegistrationForm(instance=patient)
+    
+    context = {
+        'form': form,
+        'patient': patient,
+        'page_title': f'Edit Patient: {patient.full_name}',
+    }
+    
+    return render(request, 'patients/patients_update.html', context)
+
+
+# =============================================================================
+# PATIENT DELETE (Soft Delete)
+# =============================================================================
+
+@login_required
+@require_http_methods(["POST"])
+def patients_delete(request, patient_number):
+    """
+    Soft delete a patient (mark as inactive)
+    Note: This doesn't actually delete from database to maintain data integrity
+    """
+    patient = get_object_or_404(Patient, patient_number=patient_number)
+    
+    # Check if patient has any visits
+    if patient.visits.exists():
+        messages.warning(
+            request, 
+            f'Cannot delete patient {patient.full_name} as they have visit records. Patient marked as inactive instead.'
+        )
+        patient.is_active = False
+        patient.save()
+    else:
+        # If no visits, can safely soft delete
+        patient.is_active = False
+        patient.notes += f"\n\nDeactivated by {request.user.get_full_name()} on {timezone.now()}"
+        patient.save()
+        messages.success(request, f'Patient {patient.full_name} has been deactivated.')
+    
+    return redirect('patients-list')
+
+
+
+
+
+# =============================================================================
+# PATIENT SEARCH API (Autocomplete)
+# =============================================================================
+
+@login_required
+def patient_search_api(request):
+    """
+    API endpoint for patient autocomplete search
+    """
+    query = request.GET.get('q', '').strip()
+    
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    patients = Patient.objects.filter(
+        Q(patient_number__icontains=query) |
+        Q(first_name__icontains=query) |
+        Q(last_name__icontains=query) |
+        Q(id_number__icontains=query) |
+        Q(phone_number__icontains=query),
+        is_active=True
+    )[:10]
+    
+    results = [{
+        'id': p.id,
+        'patient_number': p.patient_number,
+        'name': p.full_name,
+        'id_number': p.id_number,
+        'phone': p.phone_number,
+        'age': p.age,
+        'gender': p.get_gender_display(),
+    } for p in patients]
+    
+    return JsonResponse({'results': results})
+
+
+# =============================================================================
+# EXPORT FUNCTIONS
+# =============================================================================
+
+def export_patients_excel(queryset, search_query=''):
+    """
+    Export patients to Excel file
+    """
+    # Create workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Patients'
+    
+    # Define styles
+    header_fill = PatternFill(start_color='3498db', end_color='3498db', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True, size=12)
+    title_font = Font(bold=True, size=14, color='2980b9')
+    
+    # Title
+    ws['A1'] = 'Patient Records Export'
+    ws['A1'].font = title_font
+    ws['A2'] = f'Generated: {timezone.now().strftime("%B %d, %Y %H:%M")}'
+    if search_query:
+        ws['A3'] = f'Search Query: {search_query}'
+    ws['A4'] = f'Total Records: {queryset.count()}'
+    
+    # Headers
+    headers = [
+        'Patient Number', 'Full Name', 'ID Number', 'Gender', 'Date of Birth', 
+        'Age', 'Phone Number', 'Email', 'County', 'Blood Group', 
+        'NHIF Status', 'NHIF Number', 'Registration Date', 'Registered By'
+    ]
+    
+    start_row = 6
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=start_row, column=col_num)
+        cell.value = header
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Data rows
+    for row_num, patient in enumerate(queryset, start_row + 1):
+        ws.cell(row=row_num, column=1, value=patient.patient_number)
+        ws.cell(row=row_num, column=2, value=patient.full_name)
+        ws.cell(row=row_num, column=3, value=patient.id_number or 'N/A')
+        ws.cell(row=row_num, column=4, value=patient.get_gender_display())
+        ws.cell(row=row_num, column=5, value=patient.date_of_birth.strftime('%Y-%m-%d'))
+        ws.cell(row=row_num, column=6, value=patient.age)
+        ws.cell(row=row_num, column=7, value=patient.phone_number)
+        ws.cell(row=row_num, column=8, value=patient.email or 'N/A')
+        ws.cell(row=row_num, column=9, value=patient.county)
+        ws.cell(row=row_num, column=10, value=patient.blood_group or 'N/A')
+        ws.cell(row=row_num, column=11, value=patient.get_nhif_status_display())
+        ws.cell(row=row_num, column=12, value=patient.nhif_number or 'N/A')
+        ws.cell(row=row_num, column=13, value=patient.registration_date.strftime('%Y-%m-%d'))
+        ws.cell(row=row_num, column=14, value=patient.registered_by.get_full_name())
+    
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = get_column_letter(column[0].column)
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Create response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'patients_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    wb.save(response)
+    return response
+
+
+def export_patients_csv(queryset, search_query=''):
+    """
+    Export patients to CSV file
+    """
+    response = HttpResponse(content_type='text/csv')
+    filename = f'patients_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    response['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    writer = csv.writer(response)
+    
+    # Write header
+    writer.writerow([
+        'Patient Number', 'Full Name', 'ID Number', 'Gender', 'Date of Birth',
+        'Age', 'Phone Number', 'Email', 'County', 'Blood Group',
+        'NHIF Status', 'NHIF Number', 'Registration Date', 'Registered By'
+    ])
+    
+    # Write data rows
+    for patient in queryset:
+        writer.writerow([
+            patient.patient_number,
+            patient.full_name,
+            patient.id_number or 'N/A',
+            patient.get_gender_display(),
+            patient.date_of_birth.strftime('%Y-%m-%d'),
+            patient.age,
+            patient.phone_number,
+            patient.email or 'N/A',
+            patient.county,
+            patient.blood_group or 'N/A',
+            patient.get_nhif_status_display(),
+            patient.nhif_number or 'N/A',
+            patient.registration_date.strftime('%Y-%m-%d'),
+            patient.registered_by.get_full_name()
+        ])
+    
+    return response
+

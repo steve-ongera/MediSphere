@@ -40,4 +40,15 @@ urlpatterns = [
     path('dashboard/nhif/', views.nhif_dashboard, name='nhif_dashboard'),
     path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
     path('dashboard/default/', views.default_dashboard, name='default_dashboard'),
+    
+    # Main patient management views
+    path('patients/', views.patients_list, name='patients-list'),
+    path('patients/create/', views.patients_create, name='patients-create'),
+    path('patients/<str:patient_number>/', views.patients_detail, name='patients-detail'),
+    path('patients/<str:patient_number>/edit/', views.patients_update, name='patients-update'),
+    path('patients/<str:patient_number>/delete/', views.patients_delete, name='patients-delete'),
+
+    # Search and autocomplete
+    path('patients/api/search/', views.patient_search_api, name='patient-search-api'),
+  
 ]
