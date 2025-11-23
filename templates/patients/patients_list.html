@@ -1,0 +1,327 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Patient Records - MediSphere HMS{% endblock %}
+
+{% block content %}
+<!-- Messages -->
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% elif message.tags == 'error' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-people-fill me-2"></i>Patient Records</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item active">Patients</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    
+
+    <!-- Main Card -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <h5 class="card-title mb-0 text-white">
+                            <i class="bi bi-list-ul me-2"></i>Patient Directory
+                        </h5>
+                        <div class="d-flex gap-2 mt-2 mt-md-0">
+                            <!-- Search Form -->
+                            <form method="GET" action="{% url 'patients-list' %}" class="d-flex">
+                                <div class="input-group">
+                                    <input type="text" name="search" class="form-control" 
+                                           placeholder="Search by name, ID, phone..." 
+                                           value="{{ search_query }}" 
+                                           style="min-width: 250px;">
+                                    <button class="btn btn-light" type="submit">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                    {% if search_query %}
+                                    <a href="{% url 'patients-list' %}" class="btn btn-light">
+                                        <i class="bi bi-x-lg"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </form>
+                            
+                            <!-- Export Dropdown -->
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-download me-2"></i>Export
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="?export=excel{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="bi bi-file-earmark-excel me-2"></i>Export to Excel
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="?export=csv{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="bi bi-file-earmark-text me-2"></i>Export to CSV
+                                    </a></li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Add New Patient Button -->
+                            <a href="{% url 'patients-create' %}" class="btn btn-light">
+                                <i class="bi bi-plus-circle me-2"></i>New Patient
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    {% if search_query %}
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Showing results for: <strong>"{{ search_query }}"</strong>
+                        <a href="{% url 'patients-list' %}" class="btn btn-sm btn-outline-info ms-2">Clear Search</a>
+                    </div>
+                    {% endif %}
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th><i class="bi bi-hash me-1"></i>Patient #</th>
+                                    <th><i class="bi bi-person me-1"></i>Full Name</th>
+                                    <th><i class="bi bi-card-text me-1"></i>ID Number</th>
+                                    <th><i class="bi bi-gender-ambiguous me-1"></i>Gender</th>
+                                    <th><i class="bi bi-calendar-event me-1"></i>DOB / Age</th>
+                                    <th><i class="bi bi-telephone me-1"></i>Phone</th>
+                                    <th><i class="bi bi-shield-plus me-1"></i>NHIF Status</th>
+                                    <th><i class="bi bi-calendar-check me-1"></i>Registered</th>
+                                    <th class="text-center"><i class="bi bi-gear me-1"></i>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for patient in patients %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ patient.patient_number }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ patient.full_name }}</strong>
+                                        {% if patient.email %}
+                                        <div class="text-muted small">
+                                            <i class="bi bi-envelope me-1"></i>{{ patient.email }}
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ patient.id_number|default:"N/A" }}</td>
+                                    <td>
+                                        <span class="badge {% if patient.gender == 'MALE' %}bg-info{% else %}bg-pink{% endif %}">
+                                            {{ patient.get_gender_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {{ patient.date_of_birth|date:"d M Y" }}
+                                        <div class="text-muted small">{{ patient.age }} years</div>
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-phone me-1"></i>{{ patient.phone_number }}
+                                    </td>
+                                    <td>
+                                        {% if patient.nhif_status == 'ACTIVE' %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle me-1"></i>Active
+                                        </span>
+                                        {% elif patient.nhif_status == 'CIVIL_SERVANT' %}
+                                        <span class="badge bg-info">
+                                            <i class="bi bi-briefcase me-1"></i>Civil Servant
+                                        </span>
+                                        {% elif patient.nhif_status == 'INACTIVE' %}
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>Inactive
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-x-circle me-1"></i>None
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ patient.registration_date|date:"d M Y" }}
+                                        <div class="text-muted small">by {{ patient.registered_by.get_full_name }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'patients-detail' patient.patient_number %}" 
+                                               class="btn btn-sm btn-outline-primary" 
+                                               title="View Details">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{% url 'patients-update' patient.patient_number %}" 
+                                               class="btn btn-sm btn-outline-secondary" 
+                                               title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-danger delete-patient" 
+                                                    data-patient-number="{{ patient.patient_number }}"
+                                                    data-patient-name="{{ patient.full_name }}"
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#deletePatientModal"
+                                                    title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-5">
+                                        <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                                        <p class="text-muted mt-3">
+                                            {% if search_query %}
+                                            No patients found matching "{{ search_query }}"
+                                            {% else %}
+                                            No patients registered yet
+                                            {% endif %}
+                                        </p>
+                                        {% if not search_query %}
+                                        <a href="{% url 'patients-create' %}" class="btn btn-primary">
+                                            <i class="bi bi-plus-circle me-2"></i>Register First Patient
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if patients.paginator.num_pages > 1 %}
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="text-muted">
+                            Showing {{ patients.start_index }} to {{ patients.end_index }} of {{ patients.paginator.count }} patients
+                        </div>
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination mb-0">
+                                {% if patients.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="bi bi-chevron-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ patients.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                                
+                                {% for num in patients.paginator.page_range %}
+                                    {% if patients.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% elif num > patients.number|add:'-3' and num < patients.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if patients.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ patients.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ patients.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        <i class="bi bi-chevron-double-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deletePatientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="deletePatientForm" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Warning:</strong> This will deactivate the patient record. All visit history and medical records will be preserved.
+                    </div>
+                    <p>Are you sure you want to deactivate:</p>
+                    <p class="fw-bold text-center fs-5" id="patientToDelete"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-2"></i>Deactivate Patient
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-pink {
+        background-color: #e91e63 !important;
+    }
+    .card-icon {
+        width: 64px;
+        height: 64px;
+        font-size: 28px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Delete Patient Modal
+    const deleteButtons = document.querySelectorAll('.delete-patient');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const patientNumber = this.getAttribute('data-patient-number');
+            const patientName = this.getAttribute('data-patient-name');
+            
+            document.getElementById('patientToDelete').textContent = patientName;
+            document.getElementById('deletePatientForm').action = `/patients/${patientNumber}/delete/`;
+        });
+    });
+    
+    // Auto-hide alerts after 5 seconds
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}
