@@ -818,18 +818,643 @@ def nhif_dashboard(request):
     return render(request, 'dashboards/nhif.html', context)
 
 
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Sum, Count, Avg, Q, F
+from django.db.models.functions import TruncDate, TruncMonth
+from django.utils import timezone
+from django.http import HttpResponse
+from datetime import timedelta, datetime
+import json
+from decimal import Decimal
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
+from openpyxl.utils import get_column_letter
+
+from .models import (
+    Patient, PatientVisit, Consultation, Invoice, Payment,
+    Drug, DrugStock, LabOrder, RadiologyOrder, Admission,
+    User, Department, NHIFClaim, Prescription, Surgery
+)
+
+
 @login_required
 def admin_dashboard(request):
-    """Admin/IT Dashboard"""
+    """Enhanced Admin/IT Dashboard with Analytics"""
     if not (request.user.is_superuser or (request.user.role and request.user.role.name == 'IT_ADMIN')):
         messages.error(request, 'Access denied.')
         return redirect('dashboard')
     
+    # Get filter parameters
+    period = request.GET.get('period', '30')  # Default 30 days
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    
+    # Calculate date range
+    if start_date and end_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        except ValueError:
+            start_date = timezone.now().date() - timedelta(days=int(period))
+            end_date = timezone.now().date()
+    else:
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=int(period))
+    
+    # ========== KEY STATISTICS ==========
+    total_patients = Patient.objects.filter(is_active=True).count()
+    total_staff = User.objects.filter(is_active_staff=True).count()
+    
+    # Period-specific stats
+    visits_in_period = PatientVisit.objects.filter(
+        visit_date__gte=start_date,
+        visit_date__lte=end_date
+    )
+    total_visits = visits_in_period.count()
+    
+    # Revenue statistics
+    revenue_data = Invoice.objects.filter(
+        invoice_date__date__gte=start_date,
+        invoice_date__date__lte=end_date
+    ).aggregate(
+        total_revenue=Sum('total_amount'),
+        total_paid=Sum('amount_paid'),
+        total_pending=Sum('balance')
+    )
+    
+    total_revenue = revenue_data['total_revenue'] or Decimal('0.00')
+    total_paid = revenue_data['total_paid'] or Decimal('0.00')
+    total_pending = revenue_data['total_pending'] or Decimal('0.00')
+    
+    # Payment methods breakdown
+    payment_methods = Payment.objects.filter(
+        payment_date__date__gte=start_date,
+        payment_date__date__lte=end_date,
+        status='COMPLETED'
+    ).values('payment_method').annotate(
+        total=Sum('amount'),
+        count=Count('id')
+    ).order_by('-total')
+    
+    payment_labels = [pm['payment_method'] for pm in payment_methods]
+    payment_totals = [float(pm['total']) for pm in payment_methods]
+    
+    # ========== PATIENT ANALYTICS ==========
+    
+    # Patient registrations trend (last 30 days)
+    registration_trend = Patient.objects.filter(
+        registration_date__date__gte=start_date,
+        registration_date__date__lte=end_date
+    ).annotate(
+        date=TruncDate('registration_date')
+    ).values('date').annotate(
+        count=Count('id')
+    ).order_by('date')
+    
+    reg_dates = [rt['date'].strftime('%Y-%m-%d') for rt in registration_trend]
+    reg_counts = [rt['count'] for rt in registration_trend]
+    
+    # Patient demographics - Age groups (Database-agnostic approach)
+    from collections import Counter
+    
+    active_patients = Patient.objects.filter(is_active=True)
+    age_group_counter = Counter()
+    
+    for patient in active_patients:
+        age = patient.age
+        if age < 1:
+            age_group_counter['Infant (0-1)'] += 1
+        elif age < 13:
+            age_group_counter['Child (1-12)'] += 1
+        elif age < 18:
+            age_group_counter['Teen (13-17)'] += 1
+        elif age < 65:
+            age_group_counter['Adult (18-64)'] += 1
+        else:
+            age_group_counter['Elderly (65+)'] += 1
+    
+    age_group_labels = list(age_group_counter.keys())
+    age_group_counts = list(age_group_counter.values())
+    
+    # Gender distribution
+    gender_dist = Patient.objects.filter(is_active=True).values('gender').annotate(
+        count=Count('id')
+    )
+    gender_labels = [g['gender'] for g in gender_dist]
+    gender_counts = [g['count'] for g in gender_dist]
+    
+    # ========== VISIT ANALYTICS ==========
+    
+    # Daily visits trend
+    daily_visits = visits_in_period.annotate(
+        date=TruncDate('visit_date')
+    ).values('date').annotate(
+        count=Count('id')
+    ).order_by('date')
+    
+    visit_dates = [dv['date'].strftime('%Y-%m-%d') for dv in daily_visits]
+    visit_counts = [dv['count'] for dv in daily_visits]
+    
+    # Visit types distribution
+    visit_types = visits_in_period.values('visit_type').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    visit_type_labels = [vt['visit_type'] for vt in visit_types]
+    visit_type_counts = [vt['count'] for vt in visit_types]
+    
+    # Visit status distribution
+    visit_status = visits_in_period.values('status').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    visit_status_labels = [vs['status'] for vs in visit_status]
+    visit_status_counts = [vs['count'] for vs in visit_status]
+    
+    # Average wait time
+    completed_visits = visits_in_period.filter(exit_time__isnull=False)
+    if completed_visits.exists():
+        avg_wait_time = sum([v.wait_time_minutes for v in completed_visits]) / completed_visits.count()
+    else:
+        avg_wait_time = 0
+    
+    # ========== REVENUE ANALYTICS ==========
+    
+    # Daily revenue trend
+    daily_revenue = Invoice.objects.filter(
+        invoice_date__date__gte=start_date,
+        invoice_date__date__lte=end_date
+    ).annotate(
+        date=TruncDate('invoice_date')
+    ).values('date').annotate(
+        revenue=Sum('total_amount'),
+        paid=Sum('amount_paid')
+    ).order_by('date')
+    
+    revenue_dates = [dr['date'].strftime('%Y-%m-%d') for dr in daily_revenue]
+    revenue_amounts = [float(dr['revenue'] or 0) for dr in daily_revenue]
+    revenue_paid = [float(dr['paid'] or 0) for dr in daily_revenue]
+    
+    # Revenue by service type
+    revenue_by_service = Invoice.objects.filter(
+        invoice_date__date__gte=start_date,
+        invoice_date__date__lte=end_date
+    ).values('items__item_type').annotate(
+        total=Sum(F('items__quantity') * F('items__unit_price'))
+    ).order_by('-total')
+    
+    service_labels = [rs['items__item_type'] or 'OTHER' for rs in revenue_by_service]
+    service_amounts = [float(rs['total'] or 0) for rs in revenue_by_service]
+    
+    # Top revenue generating departments
+    top_departments = Consultation.objects.filter(
+        consultation_start__date__gte=start_date,
+        consultation_start__date__lte=end_date
+    ).values('doctor__department__name').annotate(
+        revenue=Sum('consultation_fee'),
+        count=Count('id')
+    ).order_by('-revenue')[:5]
+    
+    dept_labels = [td['doctor__department__name'] or 'N/A' for td in top_departments]
+    dept_revenue = [float(td['revenue'] or 0) for td in top_departments]
+    
+    # ========== PHARMACY ANALYTICS ==========
+    
+    # Low stock medications
+    low_stock = Drug.objects.filter(is_active=True).annotate(
+        current_stock=Sum('stock_records__quantity')
+    ).filter(
+        current_stock__lte=F('reorder_level')
+    ).order_by('current_stock')[:10]
+    
+    # Top selling medications
+    top_medicines = Prescription.objects.filter(
+        prescribed_at__date__gte=start_date,
+        prescribed_at__date__lte=end_date
+    ).values('items__drug__name').annotate(
+        quantity=Sum('items__dispensed_quantity'),
+        revenue=Sum(F('items__dispensed_quantity') * F('items__drug__unit_price'))
+    ).order_by('-quantity')[:10]
+    
+    medicine_labels = [tm['items__drug__name'] for tm in top_medicines]
+    medicine_quantities = [tm['quantity'] or 0 for tm in top_medicines]
+    medicine_revenue = [float(tm['revenue'] or 0) for tm in top_medicines]
+    
+    # Expiring stock (next 90 days)
+    expiring_soon = DrugStock.objects.filter(
+        expiry_date__lte=timezone.now().date() + timedelta(days=90),
+        expiry_date__gt=timezone.now().date(),
+        quantity__gt=0
+    ).select_related('drug').order_by('expiry_date')[:10]
+    
+    # ========== LAB & RADIOLOGY ANALYTICS ==========
+    
+    # Lab tests ordered
+    lab_tests = LabOrder.objects.filter(
+        ordered_at__date__gte=start_date,
+        ordered_at__date__lte=end_date
+    ).values('test__category').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    lab_labels = [lt['test__category'] for lt in lab_tests]
+    lab_counts = [lt['count'] for lt in lab_tests]
+    
+    # Lab turnaround time
+    completed_labs = LabOrder.objects.filter(
+        ordered_at__date__gte=start_date,
+        ordered_at__date__lte=end_date,
+        status='COMPLETED',
+        result__isnull=False
+    ).select_related('result')
+    
+    if completed_labs.exists():
+        total_tat = sum([
+            (lab.result.result_date - lab.ordered_at).total_seconds() / 3600 
+            for lab in completed_labs
+        ])
+        avg_lab_tat = total_tat / completed_labs.count()
+    else:
+        avg_lab_tat = 0
+    
+    # Radiology tests
+    radiology_tests = RadiologyOrder.objects.filter(
+        ordered_at__date__gte=start_date,
+        ordered_at__date__lte=end_date
+    ).values('test__modality').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    rad_labels = [rt['test__modality'] for rt in radiology_tests]
+    rad_counts = [rt['count'] for rt in radiology_tests]
+    
+    # ========== INPATIENT ANALYTICS ==========
+    
+    # Active admissions
+    active_admissions = Admission.objects.filter(status='ACTIVE').count()
+    
+    # Bed occupancy by ward
+    from .models import Ward
+    ward_occupancy = Ward.objects.filter(is_active=True).annotate(
+        occupied=Count('beds', filter=Q(beds__is_occupied=True)),
+        available=Count('beds', filter=Q(beds__is_occupied=False, beds__is_available=True))
+    )
+    
+    ward_labels = [w.name for w in ward_occupancy]
+    ward_occupied = [w.occupied for w in ward_occupancy]
+    ward_available = [w.available for w in ward_occupancy]
+    
+    # Average length of stay
+    discharged_admissions = Admission.objects.filter(
+        admission_datetime__date__gte=start_date,
+        discharge_datetime__date__lte=end_date,
+        status='DISCHARGED'
+    )
+    
+    if discharged_admissions.exists():
+        avg_los = sum([adm.length_of_stay for adm in discharged_admissions]) / discharged_admissions.count()
+    else:
+        avg_los = 0
+    
+    # ========== NHIF ANALYTICS ==========
+    
+    # NHIF claims status
+    nhif_claims = NHIFClaim.objects.filter(
+        created_at__date__gte=start_date,
+        created_at__date__lte=end_date
+    ).values('status').annotate(
+        count=Count('id'),
+        amount=Sum('claimed_amount')
+    )
+    
+    nhif_status_labels = [nc['status'] for nc in nhif_claims]
+    nhif_status_counts = [nc['count'] for nc in nhif_claims]
+    nhif_status_amounts = [float(nc['amount'] or 0) for nc in nhif_claims]
+    
+    # ========== STAFF PERFORMANCE ==========
+    
+    # Top performing doctors by consultations
+    top_doctors = Consultation.objects.filter(
+        consultation_start__date__gte=start_date,
+        consultation_start__date__lte=end_date
+    ).values('doctor__first_name', 'doctor__last_name').annotate(
+        count=Count('id'),
+        revenue=Sum('consultation_fee')
+    ).order_by('-count')[:10]
+    
+    doctor_labels = [f"Dr. {td['doctor__first_name']} {td['doctor__last_name']}" for td in top_doctors]
+    doctor_counts = [td['count'] for td in top_doctors]
+    doctor_revenue = [float(td['revenue'] or 0) for td in top_doctors]
+    
+    # Department performance
+    dept_performance = Department.objects.filter(is_active=True).annotate(
+        staff_count=Count('staff', filter=Q(staff__is_active_staff=True)),
+        visits=Count('staff__consultations', filter=Q(
+            staff__consultations__consultation_start__date__gte=start_date,
+            staff__consultations__consultation_start__date__lte=end_date
+        ))
+    ).order_by('-visits')
+    
+    # ========== SURGICAL ANALYTICS ==========
+    
+    surgeries_performed = Surgery.objects.filter(
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date,
+        status='COMPLETED'
+    ).count()
+    
+    surgery_types = Surgery.objects.filter(
+        start_time__date__gte=start_date,
+        start_time__date__lte=end_date
+    ).values('surgery_type').annotate(
+        count=Count('id')
+    )
+    
+    surgery_type_labels = [st['surgery_type'] for st in surgery_types]
+    surgery_type_counts = [st['count'] for st in surgery_types]
+    
+    # ========== HANDLE EXCEL EXPORT ==========
+    if request.GET.get('export') == 'excel':
+        return export_dashboard_to_excel(
+            start_date, end_date, total_patients, total_staff, total_visits,
+            total_revenue, total_paid, total_pending, active_admissions,
+            surgeries_performed, low_stock, expiring_soon, visit_types,
+            payment_methods, top_medicines, top_doctors, ward_occupancy
+        )
+    
     context = {
         'page_title': 'Admin Dashboard',
-        'user': request.user
+        'user': request.user,
+        
+        # Filter parameters
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        
+        # Key Statistics
+        'total_patients': total_patients,
+        'total_staff': total_staff,
+        'total_visits': total_visits,
+        'total_revenue': total_revenue,
+        'total_paid': total_paid,
+        'total_pending': total_pending,
+        'active_admissions': active_admissions,
+        'surgeries_performed': surgeries_performed,
+        'avg_wait_time': round(avg_wait_time, 1),
+        'avg_lab_tat': round(avg_lab_tat, 1),
+        'avg_los': round(avg_los, 1),
+        
+        # Patient Analytics
+        'reg_dates': json.dumps(reg_dates),
+        'reg_counts': json.dumps(reg_counts),
+        'age_group_labels': json.dumps(age_group_labels),
+        'age_group_counts': json.dumps(age_group_counts),
+        'gender_labels': json.dumps(gender_labels),
+        'gender_counts': json.dumps(gender_counts),
+        
+        # Visit Analytics
+        'visit_dates': json.dumps(visit_dates),
+        'visit_counts': json.dumps(visit_counts),
+        'visit_type_labels': json.dumps(visit_type_labels),
+        'visit_type_counts': json.dumps(visit_type_counts),
+        'visit_status_labels': json.dumps(visit_status_labels),
+        'visit_status_counts': json.dumps(visit_status_counts),
+        
+        # Revenue Analytics
+        'revenue_dates': json.dumps(revenue_dates),
+        'revenue_amounts': json.dumps(revenue_amounts),
+        'revenue_paid': json.dumps(revenue_paid),
+        'payment_labels': json.dumps(payment_labels),
+        'payment_totals': json.dumps(payment_totals),
+        'service_labels': json.dumps(service_labels),
+        'service_amounts': json.dumps(service_amounts),
+        'dept_labels': json.dumps(dept_labels),
+        'dept_revenue': json.dumps(dept_revenue),
+        
+        # Pharmacy Analytics
+        'low_stock': low_stock,
+        'expiring_soon': expiring_soon,
+        'medicine_labels': json.dumps(medicine_labels),
+        'medicine_quantities': json.dumps(medicine_quantities),
+        'medicine_revenue': json.dumps(medicine_revenue),
+        
+        # Lab & Radiology
+        'lab_labels': json.dumps(lab_labels),
+        'lab_counts': json.dumps(lab_counts),
+        'rad_labels': json.dumps(rad_labels),
+        'rad_counts': json.dumps(rad_counts),
+        
+        # Inpatient Analytics
+        'ward_labels': json.dumps(ward_labels),
+        'ward_occupied': json.dumps(ward_occupied),
+        'ward_available': json.dumps(ward_available),
+        
+        # NHIF Analytics
+        'nhif_status_labels': json.dumps(nhif_status_labels),
+        'nhif_status_counts': json.dumps(nhif_status_counts),
+        'nhif_status_amounts': json.dumps(nhif_status_amounts),
+        
+        # Staff Performance
+        'doctor_labels': json.dumps(doctor_labels),
+        'doctor_counts': json.dumps(doctor_counts),
+        'doctor_revenue': json.dumps(doctor_revenue),
+        'dept_performance': dept_performance,
+        
+        # Surgery Analytics
+        'surgery_type_labels': json.dumps(surgery_type_labels),
+        'surgery_type_counts': json.dumps(surgery_type_counts),
     }
-    return render(request, 'dashboards/admin.html', context)
+    
+    return render(request, 'dashboards/admin_dashboard.html', context)
+
+
+def export_dashboard_to_excel(start_date, end_date, total_patients, total_staff, 
+                               total_visits, total_revenue, total_paid, total_pending,
+                               active_admissions, surgeries_performed, low_stock, 
+                               expiring_soon, visit_types, payment_methods, 
+                               top_medicines, top_doctors, ward_occupancy):
+    """Export dashboard data to Excel"""
+    
+    wb = openpyxl.Workbook()
+    
+    # Define styles
+    header_fill = PatternFill(start_color='3498db', end_color='3498db', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True, size=12)
+    title_font = Font(bold=True, size=14, color='2980b9')
+    
+    # ========== SUMMARY SHEET ==========
+    ws_summary = wb.active
+    ws_summary.title = 'Summary'
+    
+    # Title
+    ws_summary['A1'] = 'MediSphere Hospital - Dashboard Report'
+    ws_summary['A1'].font = title_font
+    ws_summary['A2'] = f'Period: {start_date} to {end_date}'
+    
+    # Key Metrics
+    ws_summary['A4'] = 'Key Performance Indicators'
+    ws_summary['A4'].font = Font(bold=True, size=12)
+    
+    metrics = [
+        ('Total Patients', total_patients),
+        ('Total Staff', total_staff),
+        ('Total Visits', total_visits),
+        ('Total Revenue (KES)', float(total_revenue)),
+        ('Amount Paid (KES)', float(total_paid)),
+        ('Pending Amount (KES)', float(total_pending)),
+        ('Active Admissions', active_admissions),
+        ('Surgeries Performed', surgeries_performed),
+    ]
+    
+    row = 5
+    for metric, value in metrics:
+        ws_summary[f'A{row}'] = metric
+        ws_summary[f'B{row}'] = value
+        row += 1
+    
+    # ========== VISIT TYPES SHEET ==========
+    ws_visits = wb.create_sheet('Visit Types')
+    ws_visits['A1'] = 'Visit Type'
+    ws_visits['B1'] = 'Count'
+    ws_visits['A1'].fill = header_fill
+    ws_visits['B1'].fill = header_fill
+    ws_visits['A1'].font = header_font
+    ws_visits['B1'].font = header_font
+    
+    row = 2
+    for vt in visit_types:
+        ws_visits[f'A{row}'] = vt['visit_type']
+        ws_visits[f'B{row}'] = vt['count']
+        row += 1
+    
+    # ========== PAYMENT METHODS SHEET ==========
+    ws_payments = wb.create_sheet('Payment Methods')
+    ws_payments['A1'] = 'Payment Method'
+    ws_payments['B1'] = 'Total Amount (KES)'
+    ws_payments['C1'] = 'Count'
+    for cell in ['A1', 'B1', 'C1']:
+        ws_payments[cell].fill = header_fill
+        ws_payments[cell].font = header_font
+    
+    row = 2
+    for pm in payment_methods:
+        ws_payments[f'A{row}'] = pm['payment_method']
+        ws_payments[f'B{row}'] = float(pm['total'])
+        ws_payments[f'C{row}'] = pm['count']
+        row += 1
+    
+    # ========== TOP MEDICINES SHEET ==========
+    ws_meds = wb.create_sheet('Top Medicines')
+    ws_meds['A1'] = 'Medicine'
+    ws_meds['B1'] = 'Quantity Dispensed'
+    ws_meds['C1'] = 'Revenue (KES)'
+    for cell in ['A1', 'B1', 'C1']:
+        ws_meds[cell].fill = header_fill
+        ws_meds[cell].font = header_font
+    
+    row = 2
+    for med in top_medicines:
+        ws_meds[f'A{row}'] = med['items__drug__name']
+        ws_meds[f'B{row}'] = med['quantity'] or 0
+        ws_meds[f'C{row}'] = float(med['revenue'] or 0)
+        row += 1
+    
+    # ========== LOW STOCK SHEET ==========
+    ws_stock = wb.create_sheet('Low Stock')
+    ws_stock['A1'] = 'Medicine'
+    ws_stock['B1'] = 'Current Stock'
+    ws_stock['C1'] = 'Reorder Level'
+    for cell in ['A1', 'B1', 'C1']:
+        ws_stock[cell].fill = header_fill
+        ws_stock[cell].font = header_font
+    
+    row = 2
+    for drug in low_stock:
+        ws_stock[f'A{row}'] = drug.name
+        ws_stock[f'B{row}'] = drug.current_stock
+        ws_stock[f'C{row}'] = drug.reorder_level
+        row += 1
+    
+    # ========== EXPIRING STOCK SHEET ==========
+    ws_expiry = wb.create_sheet('Expiring Stock')
+    ws_expiry['A1'] = 'Medicine'
+    ws_expiry['B1'] = 'Batch Number'
+    ws_expiry['C1'] = 'Quantity'
+    ws_expiry['D1'] = 'Expiry Date'
+    ws_expiry['E1'] = 'Days to Expiry'
+    for cell in ['A1', 'B1', 'C1', 'D1', 'E1']:
+        ws_expiry[cell].fill = header_fill
+        ws_expiry[cell].font = header_font
+    
+    row = 2
+    for stock in expiring_soon:
+        ws_expiry[f'A{row}'] = stock.drug.name
+        ws_expiry[f'B{row}'] = stock.batch_number
+        ws_expiry[f'C{row}'] = stock.quantity
+        ws_expiry[f'D{row}'] = stock.expiry_date.strftime('%Y-%m-%d')
+        ws_expiry[f'E{row}'] = stock.days_to_expiry
+        row += 1
+    
+    # ========== TOP DOCTORS SHEET ==========
+    ws_doctors = wb.create_sheet('Top Doctors')
+    ws_doctors['A1'] = 'Doctor'
+    ws_doctors['B1'] = 'Consultations'
+    ws_doctors['C1'] = 'Revenue (KES)'
+    for cell in ['A1', 'B1', 'C1']:
+        ws_doctors[cell].fill = header_fill
+        ws_doctors[cell].font = header_font
+    
+    row = 2
+    for doc in top_doctors:
+        ws_doctors[f'A{row}'] = f"Dr. {doc['doctor__first_name']} {doc['doctor__last_name']}"
+        ws_doctors[f'B{row}'] = doc['count']
+        ws_doctors[f'C{row}'] = float(doc['revenue'] or 0)
+        row += 1
+    
+    # ========== WARD OCCUPANCY SHEET ==========
+    ws_wards = wb.create_sheet('Ward Occupancy')
+    ws_wards['A1'] = 'Ward'
+    ws_wards['B1'] = 'Occupied Beds'
+    ws_wards['C1'] = 'Available Beds'
+    ws_wards['D1'] = 'Total Beds'
+    ws_wards['E1'] = 'Occupancy Rate (%)'
+    for cell in ['A1', 'B1', 'C1', 'D1', 'E1']:
+        ws_wards[cell].fill = header_fill
+        ws_wards[cell].font = header_font
+    
+    row = 2
+    for ward in ward_occupancy:
+        ws_wards[f'A{row}'] = ward.name
+        ws_wards[f'B{row}'] = ward.occupied
+        ws_wards[f'C{row}'] = ward.available
+        ws_wards[f'D{row}'] = ward.total_beds
+        ws_wards[f'E{row}'] = ward.occupancy_rate
+        row += 1
+    
+    # Auto-adjust column widths for all sheets
+    for ws in wb.worksheets:
+        for column in ws.columns:
+            max_length = 0
+            column_letter = get_column_letter(column[0].column)
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(cell.value)
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Create response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename=dashboard_report_{start_date}_{end_date}.xlsx'
+    
+    wb.save(response)
+    return response
 
 
 @login_required

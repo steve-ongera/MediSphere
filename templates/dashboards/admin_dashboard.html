@@ -1,0 +1,1510 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}Admin Dashboard - Analytics{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert-message alert-{{ message.tags }}">
+        {{ message }}
+        <span class="close-message">&times;</span>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1>Admin Dashboard - System Analytics</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#">Home</a></li>
+            <li class="breadcrumb-item active">Admin Dashboard</li>
+            <li class="breadcrumb-item">{{ request.user.username }}</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Filter Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Filter Dashboard Data</h5>
+                <form method="GET" id="filterForm" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="period" class="form-label">Quick Period</label>
+                        <select class="form-select" name="period" id="period">
+                            <option value="7" {% if period == '7' %}selected{% endif %}>Last 7 Days</option>
+                            <option value="30" {% if period == '30' %}selected{% endif %}>Last 30 Days</option>
+                            <option value="90" {% if period == '90' %}selected{% endif %}>Last 90 Days</option>
+                            <option value="365" {% if period == '365' %}selected{% endif %}>Last Year</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" id="startDateDiv" style="display:none;">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" name="start_date" id="start_date" value="{{ start_date|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-3" id="endDateDiv" style="display:none;">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" name="end_date" id="end_date" value="{{ end_date|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="bi bi-filter"></i> Apply Filter
+                        </button>
+                        <a href="?export=excel&period={{ period }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" 
+                           class="btn btn-success">
+                            <i class="bi bi-file-earmark-excel"></i> Export Excel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Statistics Cards -->
+<section class="section dashboard">
+    <div class="row">
+        <!-- Total Patients -->
+        <div class="col-xxl-3 col-md-6">
+            <div class="card info-card" style="border-left: 5px solid #3498db;">
+                <div class="card-body">
+                    <h5 class="card-title">Total Patients</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background-color: #3498db;">
+                            <i class="bi bi-people text-white"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ total_patients|default:0 }}</h6>
+                            <span class="text-muted small">Registered</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Staff -->
+        <div class="col-xxl-3 col-md-6">
+            <div class="card info-card" style="border-left: 5px solid #2980b9;">
+                <div class="card-body">
+                    <h5 class="card-title">Total Staff</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background-color: #2980b9;">
+                            <i class="bi bi-person-badge text-white"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ total_staff|default:0 }}</h6>
+                            <span class="text-muted small">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Visits -->
+        <div class="col-xxl-3 col-md-6">
+            <div class="card info-card" style="border-left: 5px solid #1abc9c;">
+                <div class="card-body">
+                    <h5 class="card-title">Visits (Period)</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background-color: #1abc9c;">
+                            <i class="bi bi-calendar-check text-white"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ total_visits|default:0 }}</h6>
+                            <span class="text-muted small">{{ start_date|date:"M d" }} - {{ end_date|date:"M d" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total Revenue -->
+        <div class="col-xxl-3 col-md-6">
+            <div class="card info-card" style="border-left: 5px solid #f39c12;">
+                <div class="card-body">
+                    <h5 class="card-title">Total Revenue</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background-color: #f39c12;">
+                            <i class="bi bi-cash-stack text-white"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>KES {{ total_revenue|floatformat:2 }}</h6>
+                            <span class="text-success small">Paid: {{ total_paid|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        
+    </div>
+
+    <!-- Main Analytics Row -->
+    <div class="row">
+        <!-- Left Column - Charts -->
+        <div class="col-lg-8">
+            <!-- Patient Registration Trend -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Patient Registration Trend</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="registrationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Visits Trend -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Daily Visits Trend</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="visitsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Trend -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Revenue Trend (Total vs Paid)</h5>
+                    <div style="position: relative; height:350px;">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue by Service Type -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Revenue by Service Type</h5>
+                    <div style="position: relative; height:350px;">
+                        <canvas id="serviceRevenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Performing Doctors -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Top Performing Doctors (Consultations)</h5>
+                    <div style="position: relative; height:350px;">
+                        <canvas id="doctorsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lab Tests by Category -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Lab Tests by Category</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="labTestsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ward Occupancy -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Ward Bed Occupancy</h5>
+                    <div style="position: relative; height:350px;">
+                        <canvas id="wardOccupancyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Pie/Donut Charts & Tables -->
+        <div class="col-lg-4">
+            <!-- Age Group Distribution -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Patient Age Groups</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="ageGroupChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gender Distribution -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Gender Distribution</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="genderChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visit Types -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Visit Types</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="visitTypesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visit Status -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Visit Status</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="visitStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Methods -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Payment Methods</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="paymentMethodsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Medicines -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Top Selling Medicines</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="topMedicinesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Radiology Tests -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Radiology Tests</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="radiologyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NHIF Claims Status -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">NHIF Claims Status</h5>
+                    <div style="position: relative; height:300px;">
+                        <canvas id="nhifChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tables Row -->
+    <div class="row">
+        <!-- Low Stock Medicines -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Low Stock Medicines <span class="badge bg-danger">Alert</span></h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Medicine</th>
+                                    <th>Stock</th>
+                                    <th>Reorder Level</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for drug in low_stock %}
+                                <tr>
+                                    <td>{{ drug.name }}</td>
+                                    <td>{{ drug.current_stock }}</td>
+                                    <td>{{ drug.reorder_level }}</td>
+                                    <td>
+                                        {% if drug.current_stock == 0 %}
+                                        <span class="badge bg-danger">Out of Stock</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">Low</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center">No low stock items</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expiring Stock -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Stock Expiring Soon <span class="badge bg-warning">90 Days</span></h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Medicine</th>
+                                    <th>Batch</th>
+                                    <th>Qty</th>
+                                    <th>Expiry Date</th>
+                                    <th>Days Left</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in expiring_soon %}
+                                <tr>
+                                    <td>{{ stock.drug.name }}</td>
+                                    <td>{{ stock.batch_number }}</td>
+                                    <td>{{ stock.quantity }}</td>
+                                    <td>{{ stock.expiry_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        <span class="badge {% if stock.days_to_expiry < 30 %}bg-danger{% else %}bg-warning{% endif %}">
+                                            {{ stock.days_to_expiry }} days
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center">No expiring stock</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Performance -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Department Performance</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th>Active Staff</th>
+                                    <th>Visits/Consultations</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dept in dept_performance %}
+                                <tr>
+                                    <td><i class="bi bi-building"></i> {{ dept.get_name_display }}</td>
+                                    <td>{{ dept.staff_count }}</td>
+                                    <td>{{ dept.visits }}</td>
+                                    <td>
+                                        {% if dept.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Period selector handler
+    document.getElementById('period').addEventListener('change', function() {
+        if (this.value === 'custom') {
+            document.getElementById('startDateDiv').style.display = 'block';
+            document.getElementById('endDateDiv').style.display = 'block';
+        } else {
+            document.getElementById('startDateDiv').style.display = 'none';
+            document.getElementById('endDateDiv').style.display = 'none';
+        }
+    });
+
+    // Chart color schemes
+    const colors = {
+        primary: '#3498db',
+        secondary: '#2980b9',
+        success: '#1abc9c',
+        danger: '#e74c3c',
+        warning: '#f39c12',
+        info: '#16a085',
+        purple: '#9b59b6',
+        dark: '#34495e'
+    };
+
+    const chartColors = [
+        '#3498db', '#2980b9', '#1abc9c', '#9b59b6', '#34495e',
+        '#f39c12', '#e74c3c', '#16a085', '#27ae60', '#c0392b'
+    ];
+
+    // 1. Patient Registration Trend
+    new Chart(document.getElementById('registrationChart'), {
+        type: 'line',
+        data: {
+            labels: {{ reg_dates|safe }},
+            datasets: [{
+                label: 'New Registrations',
+                data: {{ reg_counts|safe }},
+                borderColor: colors.primary,
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // 2. Daily Visits Trend
+    new Chart(document.getElementById('visitsChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ visit_dates|safe }},
+            datasets: [{
+                label: 'Visits',
+                data: {{ visit_counts|safe }},
+                backgroundColor: colors.success,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // 3. Revenue Trend (Line Chart)
+    new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
+        data: {
+            labels: {{ revenue_dates|safe }},
+            datasets: [{
+                label: 'Total Revenue',
+                data: {{ revenue_amounts|safe }},
+                borderColor: colors.warning,
+                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                tension: 0.4,
+                fill: true
+            }, {
+                label: 'Amount Paid',
+                data: {{ revenue_paid|safe }},
+                borderColor: colors.success,
+                backgroundColor: 'rgba(26, 188, 156, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // 4. Service Revenue (Horizontal Bar)
+    new Chart(document.getElementById('serviceRevenueChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ service_labels|safe }},
+            datasets: [{
+                label: 'Revenue (KES)',
+                data: {{ service_amounts|safe }},
+                backgroundColor: chartColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+
+    // 14. Radiology Tests (Doughnut)
+    new Chart(document.getElementById('radiologyChart'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ rad_labels|safe }},
+            datasets: [{
+                data: {{ rad_counts|safe }},
+                backgroundColor: chartColors,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // 15. NHIF Claims Status (Pie)
+    new Chart(document.getElementById('nhifChart'), {
+        type: 'pie',
+        data: {
+            labels: {{ nhif_status_labels|safe }},
+            datasets: [{
+                data: {{ nhif_status_counts|safe }},
+                backgroundColor: chartColors,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const amounts = {{ nhif_status_amounts|safe }};
+                            return context.label + ': ' + context.raw + ' claims (KES ' + amounts[context.dataIndex].toFixed(2) + ')';
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+
+<style>
+/* Custom Card Hover Effects */
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(52, 152, 219, 0.15);
+    transition: all 0.3s ease;
+}
+
+/* Card Icon Styles */
+.card-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 28px;
+}
+
+/* Filter Form Styles */
+#filterForm .form-select,
+#filterForm .form-control {
+    border: 2px solid #e3e6f0;
+    border-radius: 8px;
+}
+
+#filterForm .form-select:focus,
+#filterForm .form-control:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+/* Button Styles */
+.btn-primary {
+    background-color: #3498db;
+    border-color: #3498db;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+
+.btn-success {
+    background-color: #1abc9c;
+    border-color: #1abc9c;
+}
+
+.btn-success:hover {
+    background-color: #16a085;
+    border-color: #16a085;
+}
+
+/* Table Styles */
+.table-responsive {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.table-striped tbody tr:hover {
+    background-color: rgba(52, 152, 219, 0.05);
+    cursor: pointer;
+}
+
+/* Badge Styles */
+.badge {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Card Title */
+.card-title {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+/* Alert Messages */
+.alert-message {
+    padding: 12px 20px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border-left: 4px solid;
+    position: relative;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-left-color: #1abc9c;
+    color: #155724;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border-left-color: #e74c3c;
+    color: #721c24;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-left-color: #f39c12;
+    color: #856404;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-left-color: #3498db;
+    color: #0c5460;
+}
+
+.close-message {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    opacity: 0.5;
+}
+
+.close-message:hover {
+    opacity: 1;
+}
+
+/* Responsive Chart Containers */
+.chart-container canvas {
+    max-height: 100%;
+}
+
+/* Loading Spinner for Charts */
+.chart-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
+    border-color: #3498db;
+    border-right-color: transparent;
+}
+
+/* Scrollbar Styling */
+.table-responsive::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #3498db;
+    border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #2980b9;
+}
+
+/* Print Styles */
+@media print {
+    .btn, .breadcrumb, #filterForm {
+        display: none;
+    }
+    
+    .card {
+        page-break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .col-lg-4, .col-lg-8 {
+        width: 100%;
+        float: none;
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .card-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+    }
+    
+    .card-title {
+        font-size: 0.9rem;
+    }
+    
+    h6 {
+        font-size: 1.2rem;
+    }
+    
+    .table {
+        font-size: 0.85rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================
+    // FILTER PERIOD SELECTOR HANDLER
+    // ============================================
+    document.getElementById('period').addEventListener('change', function() {
+        if (this.value === 'custom') {
+            document.getElementById('startDateDiv').style.display = 'block';
+            document.getElementById('endDateDiv').style.display = 'block';
+        } else {
+            document.getElementById('startDateDiv').style.display = 'none';
+            document.getElementById('endDateDiv').style.display = 'none';
+        }
+    });
+
+    // ============================================
+    // CHART COLOR SCHEMES
+    // ============================================
+    const colors = {
+        primary: '#3498db',
+        secondary: '#2980b9',
+        success: '#1abc9c',
+        danger: '#e74c3c',
+        warning: '#f39c12',
+        info: '#16a085',
+        purple: '#9b59b6',
+        dark: '#34495e'
+    };
+
+    const chartColors = [
+        '#3498db', '#2980b9', '#1abc9c', '#9b59b6', '#34495e',
+        '#f39c12', '#e74c3c', '#16a085', '#27ae60', '#c0392b'
+    ];
+
+    // ============================================
+    // 1. PATIENT REGISTRATION TREND (LINE CHART)
+    // ============================================
+    new Chart(document.getElementById('registrationChart'), {
+        type: 'line',
+        data: {
+            labels: JSON.parse('{{ reg_dates|escapejs }}'),
+            datasets: [{
+                label: 'New Registrations',
+                data: JSON.parse('{{ reg_counts|escapejs }}'),
+                borderColor: colors.primary,
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 2. DAILY VISITS TREND (BAR CHART)
+    // ============================================
+    new Chart(document.getElementById('visitsChart'), {
+        type: 'bar',
+        data: {
+            labels: JSON.parse('{{ visit_dates|escapejs }}'),
+            datasets: [{
+                label: 'Visits',
+                data: JSON.parse('{{ visit_counts|escapejs }}'),
+                backgroundColor: colors.success,
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // ============================================
+    // 3. REVENUE TREND (MULTI-LINE CHART)
+    // ============================================
+    new Chart(document.getElementById('revenueChart'), {
+        type: 'line',
+        data: {
+            labels: JSON.parse('{{ revenue_dates|escapejs }}'),
+            datasets: [{
+                label: 'Total Revenue',
+                data: JSON.parse('{{ revenue_amounts|escapejs }}'),
+                borderColor: colors.warning,
+                backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4
+            }, {
+                label: 'Amount Paid',
+                data: JSON.parse('{{ revenue_paid|escapejs }}'),
+                borderColor: colors.success,
+                backgroundColor: 'rgba(26, 188, 156, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': KES ' + context.raw.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'KES ' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 4. REVENUE BY SERVICE TYPE (HORIZONTAL BAR)
+    // ============================================
+    new Chart(document.getElementById('serviceRevenueChart'), {
+        type: 'bar',
+        data: {
+            labels: JSON.parse('{{ service_labels|escapejs }}'),
+            datasets: [{
+                label: 'Revenue (KES)',
+                data: JSON.parse('{{ service_amounts|escapejs }}'),
+                backgroundColor: chartColors,
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'KES ' + context.raw.toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'KES ' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 5. TOP PERFORMING DOCTORS (HORIZONTAL BAR)
+    // ============================================
+    new Chart(document.getElementById('doctorsChart'), {
+        type: 'bar',
+        data: {
+            labels: JSON.parse('{{ doctor_labels|escapejs }}'),
+            datasets: [{
+                label: 'Consultations',
+                data: JSON.parse('{{ doctor_counts|escapejs }}'),
+                backgroundColor: colors.secondary,
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.raw + ' consultations';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+
+    // ============================================
+    // 6. LAB TESTS BY CATEGORY (BAR CHART)
+    // ============================================
+    new Chart(document.getElementById('labTestsChart'), {
+        type: 'bar',
+        data: {
+            labels: JSON.parse('{{ lab_labels|escapejs }}'),
+            datasets: [{
+                label: 'Tests',
+                data: JSON.parse('{{ lab_counts|escapejs }}'),
+                backgroundColor: colors.info,
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // ============================================
+    // 7. WARD OCCUPANCY (GROUPED BAR CHART)
+    // ============================================
+    new Chart(document.getElementById('wardOccupancyChart'), {
+        type: 'bar',
+        data: {
+            labels: JSON.parse('{{ ward_labels|escapejs }}'),
+            datasets: [{
+                label: 'Occupied',
+                data: JSON.parse('{{ ward_occupied|escapejs }}'),
+                backgroundColor: colors.danger,
+                borderWidth: 1,
+                borderRadius: 5
+            }, {
+                label: 'Available',
+                data: JSON.parse('{{ ward_available|escapejs }}'),
+                backgroundColor: colors.success,
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // ============================================
+    // 8. AGE GROUP DISTRIBUTION (DOUGHNUT CHART)
+    // ============================================
+    new Chart(document.getElementById('ageGroupChart'), {
+        type: 'doughnut',
+        data: {
+            labels: JSON.parse('{{ age_group_labels|escapejs }}'),
+            datasets: [{
+                data: JSON.parse('{{ age_group_counts|escapejs }}'),
+                backgroundColor: chartColors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.raw / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.raw + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 9. GENDER DISTRIBUTION (PIE CHART)
+    // ============================================
+    new Chart(document.getElementById('genderChart'), {
+        type: 'pie',
+        data: {
+            labels: JSON.parse('{{ gender_labels|escapejs }}'),
+            datasets: [{
+                data: JSON.parse('{{ gender_counts|escapejs }}'),
+                backgroundColor: [colors.primary, colors.danger, colors.warning],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.raw / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.raw + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 10. VISIT TYPES (DOUGHNUT CHART)
+    // ============================================
+    new Chart(document.getElementById('visitTypesChart'), {
+        type: 'doughnut',
+        data: {
+            labels: JSON.parse('{{ visit_type_labels|escapejs }}'),
+            datasets: [{
+                data: JSON.parse('{{ visit_type_counts|escapejs }}'),
+                backgroundColor: chartColors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 11
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 11. VISIT STATUS (PIE CHART)
+    // ============================================
+    new Chart(document.getElementById('visitStatusChart'), {
+        type: 'pie',
+        data: {
+            labels: JSON.parse('{{ visit_status_labels|escapejs }}'),
+            datasets: [{
+                data: JSON.parse('{{ visit_status_counts|escapejs }}'),
+                backgroundColor: chartColors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        padding: 10,
+                        font: {
+                            size: 10
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 12. PAYMENT METHODS (DOUGHNUT CHART)
+    // ============================================
+    new Chart(document.getElementById('paymentMethodsChart'), {
+        type: 'doughnut',
+        data: {
+            labels: JSON.parse('{{ payment_labels|escapejs }}'),
+            datasets: [{
+                data: JSON.parse('{{ payment_totals|escapejs }}'),
+                backgroundColor: chartColors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': KES ' + context.raw.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 13. TOP MEDICINES (HORIZONTAL BAR CHART)
+    // ============================================
+    new Chart(document.getElementById('topMedicinesChart'), {
+        type: 'bar',
+        data: {
+            labels: JSON.parse('{{ medicine_labels|escapejs }}'),
+            datasets: [{
+                label: 'Quantity Dispensed',
+                data: JSON.parse('{{ medicine_quantities|escapejs }}'),
+                backgroundColor: colors.purple,
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.raw + ' units dispensed';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { beginAtZero: true }
+            }
+        }
+    });
+
+    // ============================================
+    // 14. RADIOLOGY TESTS (DOUGHNUT CHART)
+    // ============================================
+    new Chart(document.getElementById('radiologyChart'), {
+        type: 'doughnut',
+        data: {
+            labels: JSON.parse('{{ rad_labels|escapejs }}'),
+            datasets: [{
+                data: JSON.parse('{{ rad_counts|escapejs }}'),
+                backgroundColor: chartColors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 11
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // 15. NHIF CLAIMS STATUS (PIE CHART)
+    // ============================================
+    new Chart(document.getElementById('nhifChart'), {
+        type: 'pie',
+        data: {
+            labels: JSON.parse('{{ nhif_status_labels|escapejs }}'),
+            datasets: [{
+                data: JSON.parse('{{ nhif_status_counts|escapejs }}'),
+                backgroundColor: chartColors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom',
+                    labels: {
+                        padding: 10,
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const amounts = JSON.parse('{{ nhif_status_amounts|escapejs }}');
+                            return context.label + ': ' + context.raw + ' claims (KES ' + amounts[context.dataIndex].toFixed(2) + ')';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ============================================
+    // ALERT MESSAGE HANDLERS
+    // ============================================
+    const closeButtons = document.querySelectorAll('.close-message');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            this.parentElement.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                this.parentElement.remove();
+            }, 300);
+        });
+    });
+    
+    // Auto-hide messages after 5 seconds
+    setTimeout(() => {
+        const messages = document.querySelectorAll('.alert-message');
+        messages.forEach(msg => {
+            msg.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                msg.remove();
+            }, 300);
+        });
+    }, 5000);
+
+    // ============================================
+    // PRINT DASHBOARD FUNCTION
+    // ============================================
+    window.printDashboard = function() {
+        window.print();
+    };
+
+    // Add print button event listener if exists
+    const printBtn = document.getElementById('printDashboard');
+    if (printBtn) {
+        printBtn.addEventListener('click', window.printDashboard);
+    }
+
+    // ============================================
+    // REFRESH DASHBOARD DATA (OPTIONAL)
+    // ============================================
+    window.refreshDashboard = function() {
+        document.getElementById('filterForm').submit();
+    };
+
+    // ============================================
+    // TABLE SORTING (OPTIONAL ENHANCEMENT)
+    // ============================================
+    const tables = document.querySelectorAll('.table');
+    tables.forEach(table => {
+        const headers = table.querySelectorAll('th');
+        headers.forEach((header, index) => {
+            header.style.cursor = 'pointer';
+            header.addEventListener('click', function() {
+                sortTable(table, index);
+            });
+        });
+    });
+
+    function sortTable(table, columnIndex) {
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const isAscending = table.dataset.sortOrder === 'asc';
+        
+        rows.sort((a, b) => {
+            const aValue = a.cells[columnIndex].textContent.trim();
+            const bValue = b.cells[columnIndex].textContent.trim();
+            
+            if (!isNaN(aValue) && !isNaN(bValue)) {
+                return isAscending ? aValue - bValue : bValue - aValue;
+            }
+            
+            return isAscending 
+                ? aValue.localeCompare(bValue) 
+                : bValue.localeCompare(aValue);
+        });
+        
+        rows.forEach(row => tbody.appendChild(row));
+        table.dataset.sortOrder = isAscending ? 'desc' : 'asc';
+    }
+});
+
+// ============================================
+// ANIMATION STYLES
+// ============================================
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+</script>
+
+{% endblock %}
