@@ -2588,3 +2588,553 @@ def expiring_stock_report(request):
         'cutoff_date': cutoff_date,
     }
     return render(request, 'pharmacy/expiring_stock_report.html', context)
+
+
+
+# =============================================================================
+# CLINICAL SERVICES VIEWS
+# Views for Consultations and Clinical Notes
+# =============================================================================
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.utils import timezone
+from django.db.models import Q, Count, Avg
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from django.views.decorators.http import require_http_methods
+from decimal import Decimal
+
+from .models import (
+    PatientVisit, Consultation, ClinicalNote, Patient, 
+    User, HospitalSettings, Invoice, InvoiceItem
+)
+
+
+# =============================================================================
+# CONSULTATIONS
+# =============================================================================
+
+@login_required
+def consultation_list(request):
+    """
+    List all consultations with filtering and search
+    """
+    # Base queryset
+    consultations = Consultation.objects.select_related(
+        'visit__patient', 'doctor'
+    ).order_by('-consultation_start')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        consultations = consultations.filter(
+            Q(visit__patient__first_name__icontains=search_query) |
+            Q(visit__patient__last_name__icontains=search_query) |
+            Q(visit__patient__patient_number__icontains=search_query) |
+            Q(visit__visit_number__icontains=search_query) |
+            Q(final_diagnosis__icontains=search_query)
+        )
+    
+    # Filter by doctor
+    doctor_filter = request.GET.get('doctor', '')
+    if doctor_filter:
+        consultations = consultations.filter(doctor_id=doctor_filter)
+    
+    # Filter by date
+    date_filter = request.GET.get('date', '')
+    if date_filter:
+        consultations = consultations.filter(consultation_start__date=date_filter)
+    
+    # Filter by status (completed/ongoing)
+    status_filter = request.GET.get('status', '')
+    if status_filter == 'completed':
+        consultations = consultations.filter(consultation_end__isnull=False)
+    elif status_filter == 'ongoing':
+        consultations = consultations.filter(consultation_end__isnull=True)
+    
+    # Pagination
+    paginator = Paginator(consultations, 20)
+    page_number = request.GET.get('page')
+    consultations_page = paginator.get_page(page_number)
+    
+    # Get list of doctors for filter dropdown
+    doctors = User.objects.filter(
+        role__name__in=['DOCTOR', 'CLINICAL_OFFICER']
+    ).order_by('first_name', 'last_name')
+    
+    # Statistics
+    today = timezone.now().date()
+    stats = {
+        'total_today': Consultation.objects.filter(
+            consultation_start__date=today
+        ).count(),
+        'completed_today': Consultation.objects.filter(
+            consultation_start__date=today,
+            consultation_end__isnull=False
+        ).count(),
+        'ongoing': Consultation.objects.filter(
+            consultation_end__isnull=True
+        ).count(),
+        'total_this_month': Consultation.objects.filter(
+            consultation_start__month=today.month,
+            consultation_start__year=today.year
+        ).count(),
+    }
+    
+    context = {
+        'consultations': consultations_page,
+        'doctors': doctors,
+        'search_query': search_query,
+        'doctor_filter': doctor_filter,
+        'date_filter': date_filter,
+        'status_filter': status_filter,
+        'stats': stats,
+        'page_title': 'Consultations',
+    }
+    
+    return render(request, 'clinical/consultation_list.html', context)
+
+
+@login_required
+def consultation_create(request):
+    """
+    Create a new consultation
+    """
+    if request.method == 'POST':
+        try:
+            # Get patient visit
+            visit_id = request.POST.get('visit')
+            visit = get_object_or_404(PatientVisit, id=visit_id)
+            
+            # Create consultation
+            consultation = Consultation.objects.create(
+                visit=visit,
+                doctor=request.user,
+                chief_complaint=request.POST.get('chief_complaint'),
+                history_of_illness=request.POST.get('history_of_illness'),
+                past_medical_history=request.POST.get('past_medical_history', ''),
+                physical_examination=request.POST.get('physical_examination'),
+                provisional_diagnosis=request.POST.get('provisional_diagnosis', ''),
+                final_diagnosis=request.POST.get('final_diagnosis'),
+                differential_diagnosis=request.POST.get('differential_diagnosis', ''),
+                treatment_plan=request.POST.get('treatment_plan'),
+                follow_up_instructions=request.POST.get('follow_up_instructions', ''),
+                follow_up_date=request.POST.get('follow_up_date') or None,
+                admission_required=request.POST.get('admission_required') == 'on',
+                referral_required=request.POST.get('referral_required') == 'on',
+                referral_facility=request.POST.get('referral_facility', ''),
+            )
+            
+            # Update visit status
+            visit.status = 'CONSULTATION'
+            visit.save()
+            
+            messages.success(request, f'Consultation created successfully for {visit.patient.full_name}')
+            return redirect('consultation-detail', consultation.id)
+            
+        except Exception as e:
+            messages.error(request, f'Error creating consultation: {str(e)}')
+            return redirect('consultation-list')
+    
+    # GET request - show form
+    # Get visits waiting for consultation
+    waiting_visits = PatientVisit.objects.filter(
+        status__in=['WAITING', 'TRIAGE'],
+        visit_date=timezone.now().date()
+    ).select_related('patient', 'triage').order_by('priority_level', 'arrival_time')
+    
+    context = {
+        'waiting_visits': waiting_visits,
+        'page_title': 'New Consultation',
+    }
+    
+    return render(request, 'clinical/consultation_create.html', context)
+
+
+@login_required
+def consultation_detail(request, consultation_id):
+    """
+    View consultation details
+    """
+    consultation = get_object_or_404(
+        Consultation.objects.select_related(
+            'visit__patient', 'doctor', 'visit__triage'
+        ),
+        id=consultation_id
+    )
+    
+    # Get related data
+    clinical_notes = consultation.visit.clinical_notes.all().order_by('-created_at')
+    lab_orders = consultation.visit.lab_orders.select_related('test').order_by('-ordered_at')
+    radiology_orders = consultation.visit.radiology_orders.select_related('test').order_by('-ordered_at')
+    prescriptions = consultation.visit.prescriptions.prefetch_related('items__drug').order_by('-prescribed_at')
+    
+    context = {
+        'consultation': consultation,
+        'clinical_notes': clinical_notes,
+        'lab_orders': lab_orders,
+        'radiology_orders': radiology_orders,
+        'prescriptions': prescriptions,
+        'page_title': f'Consultation - {consultation.visit.visit_number}',
+    }
+    
+    return render(request, 'clinical/consultation_detail.html', context)
+
+
+@login_required
+def consultation_update(request, consultation_id):
+    """
+    Update an existing consultation
+    """
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check permissions - only the consulting doctor or admin can update
+    if request.user != consultation.doctor and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to update this consultation.')
+        return redirect('consultation-detail', consultation_id)
+    
+    if request.method == 'POST':
+        try:
+            # Update consultation fields
+            consultation.chief_complaint = request.POST.get('chief_complaint')
+            consultation.history_of_illness = request.POST.get('history_of_illness')
+            consultation.past_medical_history = request.POST.get('past_medical_history', '')
+            consultation.physical_examination = request.POST.get('physical_examination')
+            consultation.provisional_diagnosis = request.POST.get('provisional_diagnosis', '')
+            consultation.final_diagnosis = request.POST.get('final_diagnosis')
+            consultation.differential_diagnosis = request.POST.get('differential_diagnosis', '')
+            consultation.treatment_plan = request.POST.get('treatment_plan')
+            consultation.follow_up_instructions = request.POST.get('follow_up_instructions', '')
+            consultation.follow_up_date = request.POST.get('follow_up_date') or None
+            consultation.admission_required = request.POST.get('admission_required') == 'on'
+            consultation.referral_required = request.POST.get('referral_required') == 'on'
+            consultation.referral_facility = request.POST.get('referral_facility', '')
+            
+            # Mark as completed if specified
+            if request.POST.get('mark_completed') == 'on':
+                consultation.consultation_end = timezone.now()
+            
+            consultation.save()
+            
+            messages.success(request, 'Consultation updated successfully')
+            return redirect('consultation-detail', consultation_id)
+            
+        except Exception as e:
+            messages.error(request, f'Error updating consultation: {str(e)}')
+    
+    context = {
+        'consultation': consultation,
+        'page_title': f'Update Consultation - {consultation.visit.visit_number}',
+    }
+    
+    return render(request, 'clinical/consultation_update.html', context)
+
+
+@login_required
+def consultation_complete(request, consultation_id):
+    """
+    Mark consultation as completed
+    """
+    consultation = get_object_or_404(Consultation, id=consultation_id)
+    
+    # Check permissions
+    if request.user != consultation.doctor and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to complete this consultation.')
+        return redirect('consultation-detail', consultation_id)
+    
+    if request.method == 'POST':
+        consultation.consultation_end = timezone.now()
+        consultation.save()
+        
+        # Update visit status
+        consultation.visit.status = 'COMPLETED'
+        consultation.visit.exit_time = timezone.now()
+        consultation.visit.save()
+        
+        messages.success(request, 'Consultation marked as completed')
+        return redirect('consultation-detail', consultation_id)
+    
+    return redirect('consultation-detail', consultation_id)
+
+
+# =============================================================================
+# CLINICAL NOTES
+# =============================================================================
+
+@login_required
+def clinical_notes_list(request):
+    """
+    List all clinical notes with filtering
+    """
+    # Base queryset
+    notes = ClinicalNote.objects.select_related(
+        'visit__patient', 'clinician'
+    ).order_by('-created_at')
+    
+    # Search functionality
+    search_query = request.GET.get('search', '')
+    if search_query:
+        notes = notes.filter(
+            Q(visit__patient__first_name__icontains=search_query) |
+            Q(visit__patient__last_name__icontains=search_query) |
+            Q(visit__patient__patient_number__icontains=search_query) |
+            Q(subject__icontains=search_query) |
+            Q(content__icontains=search_query)
+        )
+    
+    # Filter by note type
+    note_type = request.GET.get('note_type', '')
+    if note_type:
+        notes = notes.filter(note_type=note_type)
+    
+    # Filter by clinician
+    clinician_filter = request.GET.get('clinician', '')
+    if clinician_filter:
+        notes = notes.filter(clinician_id=clinician_filter)
+    
+    # Filter by date
+    date_filter = request.GET.get('date', '')
+    if date_filter:
+        notes = notes.filter(created_at__date=date_filter)
+    
+    # Pagination
+    paginator = Paginator(notes, 20)
+    page_number = request.GET.get('page')
+    notes_page = paginator.get_page(page_number)
+    
+    # Get clinicians for filter
+    clinicians = User.objects.filter(
+        role__name__in=['DOCTOR', 'CLINICAL_OFFICER', 'NURSE']
+    ).order_by('first_name', 'last_name')
+    
+    # Note types for filter
+    note_types = ClinicalNote.NOTE_TYPE_CHOICES
+    
+    # Statistics
+    today = timezone.now().date()
+    stats = {
+        'total_today': ClinicalNote.objects.filter(created_at__date=today).count(),
+        'consultation_notes': ClinicalNote.objects.filter(note_type='CONSULTATION').count(),
+        'progress_notes': ClinicalNote.objects.filter(note_type='PROGRESS').count(),
+        'procedure_notes': ClinicalNote.objects.filter(note_type='PROCEDURE').count(),
+    }
+    
+    context = {
+        'notes': notes_page,
+        'clinicians': clinicians,
+        'note_types': note_types,
+        'search_query': search_query,
+        'note_type': note_type,
+        'clinician_filter': clinician_filter,
+        'date_filter': date_filter,
+        'stats': stats,
+        'page_title': 'Clinical Notes',
+    }
+    
+    return render(request, 'clinical/clinical_notes_list.html', context)
+
+
+@login_required
+def clinical_note_create(request):
+    """
+    Create a new clinical note
+    """
+    if request.method == 'POST':
+        try:
+            # Get visit
+            visit_id = request.POST.get('visit')
+            visit = get_object_or_404(PatientVisit, id=visit_id)
+            
+            # Create clinical note
+            note = ClinicalNote.objects.create(
+                visit=visit,
+                note_type=request.POST.get('note_type'),
+                clinician=request.user,
+                subject=request.POST.get('subject'),
+                content=request.POST.get('content'),
+            )
+            
+            messages.success(request, 'Clinical note created successfully')
+            return redirect('clinical-note-detail', note.id)
+            
+        except Exception as e:
+            messages.error(request, f'Error creating clinical note: {str(e)}')
+            return redirect('clinical-notes-list')
+    
+    # GET request - show form
+    # Get active visits
+    active_visits = PatientVisit.objects.filter(
+        status__in=['CONSULTATION', 'ADMITTED'],
+        visit_date__gte=timezone.now().date() - timezone.timedelta(days=7)
+    ).select_related('patient').order_by('-visit_date')
+    
+    # Note types
+    note_types = ClinicalNote.NOTE_TYPE_CHOICES
+    
+    context = {
+        'active_visits': active_visits,
+        'note_types': note_types,
+        'page_title': 'New Clinical Note',
+    }
+    
+    return render(request, 'clinical/clinical_note_create.html', context)
+
+
+@login_required
+def clinical_note_detail(request, note_id):
+    """
+    View clinical note details
+    """
+    note = get_object_or_404(
+        ClinicalNote.objects.select_related(
+            'visit__patient', 'clinician'
+        ),
+        id=note_id
+    )
+    
+    # Get other notes for this visit
+    related_notes = ClinicalNote.objects.filter(
+        visit=note.visit
+    ).exclude(id=note_id).order_by('-created_at')
+    
+    context = {
+        'note': note,
+        'related_notes': related_notes,
+        'page_title': f'Clinical Note - {note.subject}',
+    }
+    
+    return render(request, 'clinical/clinical_note_detail.html', context)
+
+
+@login_required
+def clinical_note_update(request, note_id):
+    """
+    Update clinical note
+    """
+    note = get_object_or_404(ClinicalNote, id=note_id)
+    
+    # Check permissions - only the author or admin can update
+    if request.user != note.clinician and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to update this note.')
+        return redirect('clinical-note-detail', note_id)
+    
+    if request.method == 'POST':
+        try:
+            note.note_type = request.POST.get('note_type')
+            note.subject = request.POST.get('subject')
+            note.content = request.POST.get('content')
+            note.save()
+            
+            messages.success(request, 'Clinical note updated successfully')
+            return redirect('clinical-note-detail', note_id)
+            
+        except Exception as e:
+            messages.error(request, f'Error updating clinical note: {str(e)}')
+    
+    # Note types
+    note_types = ClinicalNote.NOTE_TYPE_CHOICES
+    
+    context = {
+        'note': note,
+        'note_types': note_types,
+        'page_title': f'Update Clinical Note - {note.subject}',
+    }
+    
+    return render(request, 'clinical/clinical_note_update.html', context)
+
+
+@login_required
+def clinical_note_delete(request, note_id):
+    """
+    Delete clinical note
+    """
+    note = get_object_or_404(ClinicalNote, id=note_id)
+    
+    # Check permissions - only the author or admin can delete
+    if request.user != note.clinician and not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to delete this note.')
+        return redirect('clinical-note-detail', note_id)
+    
+    if request.method == 'POST':
+        visit_id = note.visit.id
+        note.delete()
+        
+        messages.success(request, 'Clinical note deleted successfully')
+        return redirect('clinical-notes-list')
+    
+    return redirect('clinical-note-detail', note_id)
+
+
+# =============================================================================
+# AJAX ENDPOINTS
+# =============================================================================
+
+@login_required
+@require_http_methods(["GET"])
+def patient_search_ajax(request):
+    """
+    AJAX endpoint for patient search
+    """
+    query = request.GET.get('q', '').strip()
+    
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    # Search patients
+    patients = Patient.objects.filter(
+        Q(first_name__icontains=query) |
+        Q(last_name__icontains=query) |
+        Q(patient_number__icontains=query) |
+        Q(id_number__icontains=query) |
+        Q(phone_number__icontains=query)
+    ).order_by('-registration_date')[:10]
+    
+    results = []
+    for patient in patients:
+        results.append({
+            'id': patient.id,
+            'text': f"{patient.full_name} (ID: {patient.id_number or 'N/A'})",
+            'patient_number': patient.patient_number,
+            'name': patient.full_name,
+            'id_number': patient.id_number or 'N/A',
+            'dob': patient.date_of_birth.strftime('%Y-%m-%d'),
+            'gender': patient.get_gender_display(),
+            'phone': patient.phone_number,
+        })
+    
+    return JsonResponse({'results': results})
+
+
+@login_required
+@require_http_methods(["GET"])
+def visit_search_ajax(request):
+    """
+    AJAX endpoint for visit search
+    """
+    query = request.GET.get('q', '').strip()
+    
+    if len(query) < 2:
+        return JsonResponse({'results': []})
+    
+    # Search visits
+    visits = PatientVisit.objects.filter(
+        Q(visit_number__icontains=query) |
+        Q(patient__first_name__icontains=query) |
+        Q(patient__last_name__icontains=query) |
+        Q(patient__patient_number__icontains=query)
+    ).select_related('patient').order_by('-visit_date')[:10]
+    
+    results = []
+    for visit in visits:
+        results.append({
+            'id': visit.id,
+            'text': f"{visit.visit_number} - {visit.patient.full_name}",
+            'visit_number': visit.visit_number,
+            'patient_name': visit.patient.full_name,
+            'visit_date': visit.visit_date.strftime('%Y-%m-%d'),
+            'status': visit.get_status_display(),
+        })
+    
+    return JsonResponse({'results': results})

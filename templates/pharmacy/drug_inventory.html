@@ -1,5 +1,4 @@
-﻿
-{% extends 'base/base.html'%}
+﻿{% extends 'base/base.html'%}
 {% load static %}
 
 {% block title %}Drug Inventory - Clinic Management System{% endblock %}
@@ -27,108 +26,79 @@
 </div>
 
 <section class="section">
-    <div class="row mb-3">
-        <!-- Quick Stats -->
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-capsule-pill text-primary" style="font-size: 2rem;"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-0">Total Drugs</h6>
-                            <h3 class="mb-0">{{ drugs.count }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-0">Low Stock</h6>
-                            <h3 class="mb-0">{{ drugs|length }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-calendar-x text-danger" style="font-size: 2rem;"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-0">Expiring Soon</h6>
-                            <h3 class="mb-0">0</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="bi bi-tags text-success" style="font-size: 2rem;"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="text-muted mb-0">Categories</h6>
-                            <h3 class="mb-0">{{ categories.count }}</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="row">
         <div class="col-lg-12">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-clinic-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap">
-                        <h5 class="card-title mb-0"><i class="bi bi-capsule me-2"></i>All Drugs</h5>
-                        <div class="d-flex gap-2 mt-2 mt-md-0">
-                            <!-- Search -->
-                            <div class="input-group" style="max-width: 300px;">
-                                <input type="text" class="form-control" placeholder="Search drugs..." 
-                                       id="drugSearch" minlength="2" value="{{ search_query }}">
-                                <button class="btn btn-outline-light" type="button" id="searchButton">
-                                    <i class="bi bi-search"></i>
-                                </button>
+                    <div class="header-content">
+                        <h5 class="card-title mb-3 text-white">
+                            <i class="bi bi-capsule me-2"></i>All Drugs
+                        </h5>
+                        
+                        <!-- Professional Toolbar with Filters and Actions -->
+                        <div class="toolbar-container">
+                            <div class="toolbar-filters">
+                                <!-- Search -->
+                                <div class="search-wrapper">
+                                    <div class="input-group input-group-modern">
+                                        <span class="input-group-text bg-white border-end-0">
+                                            <i class="bi bi-search text-muted"></i>
+                                        </span>
+                                        <input type="text" 
+                                               class="form-control border-start-0 ps-0" 
+                                               placeholder="Search drugs by name, code..." 
+                                               id="drugSearch" 
+                                               minlength="2" 
+                                               value="{{ search_query }}">
+                                    </div>
+                                </div>
+                                
+                                <!-- Category Filter -->
+                                <div class="filter-wrapper">
+                                    <select class="form-select form-select-modern" id="categoryFilter">
+                                        <option value="">All Categories</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}" 
+                                                {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ category.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <!-- Stock Status Filter -->
+                                <div class="filter-wrapper">
+                                    <select class="form-select form-select-modern" id="stockStatusFilter">
+                                        <option value="">All Stock Status</option>
+                                        <option value="available" {% if stock_status == 'available' %}selected{% endif %}>
+                                            In Stock
+                                        </option>
+                                        <option value="low" {% if stock_status == 'low' %}selected{% endif %}>
+                                            Low Stock
+                                        </option>
+                                        <option value="out" {% if stock_status == 'out' %}selected{% endif %}>
+                                            Out of Stock
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
                             
-                            <!-- Category Filter -->
-                            <select class="form-select" id="categoryFilter" style="max-width: 200px;">
-                                <option value="">All Categories</option>
-                                {% for category in categories %}
-                                <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ category.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            
-                            <!-- Stock Status Filter -->
-                            <select class="form-select" id="stockStatusFilter" style="max-width: 150px;">
-                                <option value="">All Stock</option>
-                                <option value="available" {% if stock_status == 'available' %}selected{% endif %}>In Stock</option>
-                                <option value="low" {% if stock_status == 'low' %}selected{% endif %}>Low Stock</option>
-                                <option value="out" {% if stock_status == 'out' %}selected{% endif %}>Out of Stock</option>
-                            </select>
-                            
-                            <!-- Actions -->
-                            <a href="{% url 'drug-create' %}" class="btn btn-clinic-light" style="color:grey">
-                                <i class="bi bi-plus-circle me-2"></i>Add New Drug
-                            </a>
+                            <!-- Action Buttons -->
+                            <div class="toolbar-actions">
+                                <button type="button" 
+                                        class="btn btn-outline-light btn-icon" 
+                                        id="refreshButton"
+                                        title="Refresh inventory">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                                
+                                <div class="vr"></div>
+                                
+                                <a href="{% url 'drug-create' %}" class="btn btn-light btn-action">
+                                    <i class="bi bi-plus-circle me-2"></i>
+                                    <span>Add New Drug</span>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -142,23 +112,219 @@
 </section>
 
 <style>
-    .form-control:focus, .form-select:focus {
-        border-color: var(--clinic-primary);
-        box-shadow: 0 0 0 0.25rem rgba(26, 140, 255, 0.25);
+/* Main Card Styling */
+.card {
+    border-radius: 0.5rem;
+}
+
+.card-header.bg-clinic-primary {
+    padding: 1.5rem;
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+}
+
+.header-content {
+    width: 100%;
+}
+
+/* Toolbar Container */
+.toolbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.toolbar-filters {
+    display: flex;
+    gap: 0.75rem;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+/* Search Wrapper */
+.search-wrapper {
+    min-width: 280px;
+    flex: 1;
+    max-width: 350px;
+}
+
+.input-group-modern {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.input-group-modern .input-group-text {
+    background-color: #fff;
+    border-right: none;
+    padding-right: 0;
+    border: 1px solid #dee2e6;
+    border-right: none;
+}
+
+.input-group-modern .form-control {
+    border-left: none;
+    padding-left: 0;
+    border: 1px solid #dee2e6;
+    border-left: none;
+}
+
+.input-group-modern .form-control::placeholder {
+    color: #adb5bd;
+}
+
+.input-group-modern .form-control:focus {
+    border-color: #dee2e6;
+    box-shadow: none;
+}
+
+.input-group-modern:focus-within {
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+}
+
+.input-group-modern:focus-within .input-group-text {
+    border-color: #1a73e8;
+}
+
+.input-group-modern:focus-within .form-control {
+    border-color: #1a73e8;
+}
+
+/* Filter Wrappers */
+.filter-wrapper {
+    min-width: 180px;
+}
+
+.form-select-modern {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.375rem;
+    padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+    font-size: 0.9375rem;
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.form-select-modern option {
+    color: #495057;
+    background-color: #fff;
+}
+
+.form-select-modern:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.form-select-modern:focus {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+    outline: none;
+    color: #fff;
+}
+
+
+/* Vertical Divider */
+.vr {
+    width: 1px;
+    height: 24px;
+    background-color: rgba(255, 255, 255, 0.3);
+    opacity: 1;
+}
+
+/* Animation for refresh button */
+@keyframes rotate360 {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Drug Card Hover Effect */
+.drug-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.drug-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(26, 115, 232, 0.15);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .search-wrapper {
+        min-width: 220px;
     }
     
-    .card {
-        border-radius: 0.5rem;
+    .filter-wrapper {
+        min-width: 160px;
+    }
+}
+
+@media (max-width: 992px) {
+    .toolbar-container {
+        flex-direction: column;
+        align-items: stretch;
     }
     
-    .drug-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    .toolbar-filters {
+        width: 100%;
     }
     
-    .drug-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 0.5rem 1rem rgba(26, 115, 232, 0.15);
+    .toolbar-actions {
+        width: 100%;
+        justify-content: flex-end;
     }
+    
+    .search-wrapper {
+        min-width: 100%;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .toolbar-filters {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .filter-wrapper {
+        width: 100%;
+        min-width: 100%;
+    }
+    
+    .toolbar-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .btn-action {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .vr {
+        display: none;
+    }
+    
+    .btn-icon {
+        width: 100%;
+    }
+}
+
+
 </style>
 
 <!-- Drug Detail Modal -->
@@ -305,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('drugSearch');
     const categoryFilter = document.getElementById('categoryFilter');
     const stockStatusFilter = document.getElementById('stockStatusFilter');
-    const searchButton = document.getElementById('searchButton');
+    const refreshButton = document.getElementById('refreshButton');
     const drugCardsContainer = document.getElementById('drugCardsContainer');
     let searchTimeout;
 
@@ -335,7 +501,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    searchButton.addEventListener('click', performSearch);
+    // Refresh button with animation
+    refreshButton.addEventListener('click', function() {
+        this.classList.add('rotating');
+        setTimeout(() => {
+            this.classList.remove('rotating');
+        }, 600);
+        window.location.reload();
+    });
+
     searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch());
     searchInput.addEventListener('input', function() {
         clearTimeout(searchTimeout);

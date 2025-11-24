@@ -1,0 +1,74 @@
+<!-- ======= CASHIER SIDEBAR ======= -->
+<aside id="sidebar-cashier" class="sidebar">
+    <div class="sidebar-brand text-center py-3 bg-white">
+        <img src="{% static 'assets/img/mediclinic-logo.png' %}" alt="Hospital Logo" style="height: 40px;">
+        <h6 class="mt-2 text-uppercase" style="color: #1a76d1; font-weight: 600;">BILLING PORTAL</h6>
+    </div>
+
+    <ul class="sidebar-nav" id="sidebar-nav">
+        <!-- Dashboard -->
+        <li class="nav-item">
+            <a class="nav-link" href="#" style="border-left: 3px solid #1a76d1;">
+                <i class="bi bi-speedometer2" style="color: #1a76d1;"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+
+        <!-- Billing -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" data-bs-target="#billing-nav" data-bs-toggle="collapse" href="#">
+                <i class="bi bi-cash-stack" style="color: #1a76d1;"></i>
+                <span>Billing & Invoices</span>
+                <i class="bi bi-chevron-down ms-auto"></i>
+            </a>
+            <ul id="billing-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+                <li><a href="#"><i class="bi bi-file-earmark-text"></i> Pending Invoices</a></li>
+                <li><a href="#"><i class="bi bi-receipt"></i> All Invoices</a></li>
+                <li><a href="#"><i class="bi bi-search"></i> Search Invoice</a></li>
+            </ul>
+        </li>
+
+        <!-- Payments -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" data-bs-target="#payment-nav" data-bs-toggle="collapse" href="#">
+                <i class="bi bi-credit-card" style="color: #1a76d1;"></i>
+                <span>Payments</span>
+                <i class="bi bi-chevron-down ms-auto"></i>
+            </a>
+            <ul id="payment-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+                <li><a href="#"><i class="bi bi-cash"></i> Process Payment</a></li>
+                <li><a href="#"><i class="bi bi-phone"></i> M-Pesa Payments</a></li>
+                <li><a href="#"><i class="bi bi-list-check"></i> Payment History</a></li>
+            </ul>
+        </li>
+
+        <!-- Receipts -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#">
+                <i class="bi bi-receipt-cutoff" style="color: #1a76d1;"></i>
+                <span>Receipts</span>
+            </a>
+        </li>
+
+        <!-- Reports -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
+                <i class="bi bi-graph-up" style="color: #1a76d1;"></i>
+                <span>Reports</span>
+                <i class="bi bi-chevron-down ms-auto"></i>
+            </a>
+            <ul id="reports-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
+                <li><a href="#"><i class="bi bi-calendar-day"></i> Daily Collections</a></li>
+                <li><a href="#"><i class="bi bi-bar-chart"></i> Revenue Report</a></li>
+            </ul>
+        </li>
+
+        <!-- Logout -->
+        <li class="nav-item">
+            <a class="nav-link collapsed" href="#">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Logout</span>
+            </a>
+        </li>
+    </ul>
+</aside>

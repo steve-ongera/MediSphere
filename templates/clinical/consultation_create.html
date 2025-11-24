@@ -1,0 +1,508 @@
+﻿{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}New Consultation - MediSphere HMS{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-clipboard2-plus me-2"></i>New Consultation</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'consultation-list' %}">Consultations</a></li>
+            <li class="breadcrumb-item active">New Consultation</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row">
+        <!-- Main Consultation Form -->
+        <div class="col-lg-9">
+            <form method="post" id="consultationForm">
+                {% csrf_token %}
+                
+                <!-- Patient Visit Selection -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <h5 class="card-title mb-0 text-white">
+                            <i class="bi bi-person-circle me-2"></i>Select Patient Visit
+                        </h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">
+                                Patient Visit <span class="text-danger">*</span>
+                            </label>
+                            <select name="visit" id="visitSelect" class="form-select" required>
+                                <option value="">-- Select a patient visit --</option>
+                                {% for visit in waiting_visits %}
+                                <option value="{{ visit.id }}" 
+                                        data-patient-name="{{ visit.patient.full_name }}"
+                                        data-patient-number="{{ visit.patient.patient_number }}"
+                                        data-patient-age="{{ visit.patient.age }}"
+                                        data-patient-gender="{{ visit.patient.get_gender_display }}"
+                                        data-visit-number="{{ visit.visit_number }}"
+                                        data-chief-complaint="{{ visit.chief_complaint }}"
+                                        data-priority="{{ visit.get_priority_level_display }}"
+                                        {% if visit.triage %}
+                                        data-temperature="{{ visit.triage.temperature }}"
+                                        data-pulse="{{ visit.triage.pulse }}"
+                                        data-bp="{{ visit.triage.systolic_bp }}/{{ visit.triage.diastolic_bp }}"
+                                        data-respiratory-rate="{{ visit.triage.respiratory_rate }}"
+                                        data-oxygen="{{ visit.triage.oxygen_saturation }}"
+                                        {% endif %}>
+                                    {{ visit.visit_number }} - {{ visit.patient.full_name }} 
+                                    ({{ visit.patient.age }}y, {{ visit.patient.get_gender_display }})
+                                    {% if visit.priority_level <= 2 %} - <strong class="text-danger">{{ visit.get_priority_level_display }}</strong>{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Shows patients waiting for consultation today</small>
+                        </div>
+                        
+                        <!-- Selected Patient Info -->
+                        <div id="selectedPatientInfo" style="display: none;" class="alert alert-info mt-3">
+                            <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Patient Information</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Name:</strong> <span id="patientName"></span></p>
+                                    <p class="mb-1"><strong>Patient #:</strong> <span id="patientNumber"></span></p>
+                                    <p class="mb-1"><strong>Age/Gender:</strong> <span id="patientAge"></span> / <span id="patientGender"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Visit #:</strong> <span id="visitNumber"></span></p>
+                                    <p class="mb-1"><strong>Priority:</strong> <span id="priority"></span></p>
+                                    <p class="mb-0"><strong>Chief Complaint:</strong> <span id="chiefComplaintPreview"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Vital Signs (if available) -->
+                        <div id="vitalSigns" style="display: none;" class="card bg-light mt-3">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="bi bi-activity me-2"></i>Vital Signs</h6>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Temperature</small>
+                                        <p class="mb-0"><strong><span id="temperature"></span>°C</strong></p>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Pulse</small>
+                                        <p class="mb-0"><strong><span id="pulse"></span> BPM</strong></p>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Blood Pressure</small>
+                                        <p class="mb-0"><strong><span id="bp"></span> mmHg</strong></p>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">SpO2</small>
+                                        <p class="mb-0"><strong><span id="oxygen"></span>%</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clinical Assessment -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <h5 class="card-title mb-0 text-white">
+                            <i class="bi bi-clipboard-pulse me-2"></i>Clinical Assessment
+                        </h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="chief_complaint" class="form-label">
+                                    Chief Complaint <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="chief_complaint" 
+                                          id="chief_complaint" 
+                                          class="form-control" 
+                                          rows="2" 
+                                          required
+                                          placeholder="Patient main complaint"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="history_of_illness" class="form-label">
+                                    History of Presenting Illness (HPI) <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="history_of_illness" 
+                                          id="history_of_illness" 
+                                          class="form-control" 
+                                          rows="4" 
+                                          required
+                                          placeholder="Detailed history of current illness..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="past_medical_history" class="form-label">
+                                    Past Medical History
+                                </label>
+                                <textarea name="past_medical_history" 
+                                          id="past_medical_history" 
+                                          class="form-control" 
+                                          rows="3"
+                                          placeholder="Previous illnesses, surgeries, chronic conditions..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="physical_examination" class="form-label">
+                                    Physical Examination <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="physical_examination" 
+                                          id="physical_examination" 
+                                          class="form-control" 
+                                          rows="4" 
+                                          required
+                                          placeholder="General appearance, systems examination findings..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diagnosis -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <h5 class="card-title mb-0 text-white">
+                            <i class="bi bi-file-medical me-2"></i>Diagnosis
+                        </h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="provisional_diagnosis" class="form-label">
+                                    Provisional Diagnosis
+                                </label>
+                                <textarea name="provisional_diagnosis" 
+                                          id="provisional_diagnosis" 
+                                          class="form-control" 
+                                          rows="2"
+                                          placeholder="Initial working diagnosis..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="final_diagnosis" class="form-label">
+                                    Final Diagnosis <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="final_diagnosis" 
+                                          id="final_diagnosis" 
+                                          class="form-control" 
+                                          rows="2" 
+                                          required
+                                          placeholder="ICD-10 coded diagnosis..."></textarea>
+                                <small class="text-muted">Include ICD-10 codes where applicable</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="differential_diagnosis" class="form-label">
+                                    Differential Diagnosis
+                                </label>
+                                <textarea name="differential_diagnosis" 
+                                          id="differential_diagnosis" 
+                                          class="form-control" 
+                                          rows="2"
+                                          placeholder="Alternative possible diagnoses..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Treatment Plan -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <h5 class="card-title mb-0 text-white">
+                            <i class="bi bi-prescription2 me-2"></i>Treatment Plan
+                        </h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="treatment_plan" class="form-label">
+                                    Management & Treatment Plan <span class="text-danger">*</span>
+                                </label>
+                                <textarea name="treatment_plan" 
+                                          id="treatment_plan" 
+                                          class="form-control" 
+                                          rows="4" 
+                                          required
+                                          placeholder="Medications, procedures, lifestyle advice..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="follow_up_instructions" class="form-label">
+                                    Follow-up Instructions
+                                </label>
+                                <textarea name="follow_up_instructions" 
+                                          id="follow_up_instructions" 
+                                          class="form-control" 
+                                          rows="3"
+                                          placeholder="Instructions for patient follow-up..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="follow_up_date" class="form-label">
+                                    Follow-up Date
+                                </label>
+                                <input type="date" 
+                                       name="follow_up_date" 
+                                       id="follow_up_date" 
+                                       class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Actions -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-clinic-primary text-white">
+                        <h5 class="card-title mb-0 text-white">
+                            <i class="bi bi-gear me-2"></i>Additional Actions
+                        </h5>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           name="admission_required" 
+                                           id="admission_required">
+                                    <label class="form-check-label" for="admission_required">
+                                        <strong>Admission Required</strong>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           name="referral_required" 
+                                           id="referral_required">
+                                    <label class="form-check-label" for="referral_required">
+                                        <strong>Referral Required</strong>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="referralFields" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="referral_facility" class="form-label">
+                                        Referral Facility
+                                    </label>
+                                    <input type="text" 
+                                           name="referral_facility" 
+                                           id="referral_facility" 
+                                           class="form-control"
+                                           placeholder="Name of facility to refer to...">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-between mb-4">
+                    <a href="{% url 'consultation-list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-save me-2"></i>Save Consultation
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Sidebar - Quick Info -->
+        <div class="col-lg-3">
+            <!-- Waiting Patients -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-hourglass-split me-2"></i>Waiting Patients
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <h3 class="text-primary mb-0">{{ waiting_visits|length }}</h3>
+                    <small class="text-muted">Patients in queue</small>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightning me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'patient-queue' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-list-ul me-2"></i>View Queue
+                        </a>
+                        <a href="{% url 'clinical-notes-list' %}" class="btn btn-outline-info btn-sm">
+                            <i class="bi bi-file-earmark-medical me-2"></i>Clinical Notes
+                        </a>
+                        <a href="{% url 'consultation-list' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-clipboard2-pulse me-2"></i>All Consultations
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tips -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightbulb me-2"></i>Tips
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled small mb-0">
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Use ICD-10 codes for diagnosis
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Document all findings clearly
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Set appropriate follow-up dates
+                        </li>
+                        <li class="mb-0">
+                            <i class="bi bi-check-circle text-success me-2"></i>
+                            Check patient allergies
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.form-control:focus, .form-select:focus {
+    border-color: var(--clinic-primary);
+    box-shadow: 0 0 0 0.25rem rgba(26, 140, 255, 0.25);
+}
+
+.card {
+    border-radius: 0.5rem;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
+    color: #0d47a1;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const visitSelect = document.getElementById('visitSelect');
+    const selectedPatientInfo = document.getElementById('selectedPatientInfo');
+    const vitalSigns = document.getElementById('vitalSigns');
+    const chiefComplaintField = document.getElementById('chief_complaint');
+    const referralCheckbox = document.getElementById('referral_required');
+    const referralFields = document.getElementById('referralFields');
+    
+    // Handle visit selection
+    visitSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        
+        if (this.value) {
+            // Display patient info
+            document.getElementById('patientName').textContent = selectedOption.dataset.patientName;
+            document.getElementById('patientNumber').textContent = selectedOption.dataset.patientNumber;
+            document.getElementById('patientAge').textContent = selectedOption.dataset.patientAge;
+            document.getElementById('patientGender').textContent = selectedOption.dataset.patientGender;
+            document.getElementById('visitNumber').textContent = selectedOption.dataset.visitNumber;
+            document.getElementById('priority').textContent = selectedOption.dataset.priority;
+            document.getElementById('chiefComplaintPreview').textContent = selectedOption.dataset.chiefComplaint;
+            
+            selectedPatientInfo.style.display = 'block';
+            
+            // Auto-fill chief complaint
+            chiefComplaintField.value = selectedOption.dataset.chiefComplaint;
+            
+            // Display vital signs if available
+            if (selectedOption.dataset.temperature) {
+                document.getElementById('temperature').textContent = selectedOption.dataset.temperature;
+                document.getElementById('pulse').textContent = selectedOption.dataset.pulse;
+                document.getElementById('bp').textContent = selectedOption.dataset.bp;
+                document.getElementById('oxygen').textContent = selectedOption.dataset.oxygen;
+                vitalSigns.style.display = 'block';
+            } else {
+                vitalSigns.style.display = 'none';
+            }
+        } else {
+            selectedPatientInfo.style.display = 'none';
+            vitalSigns.style.display = 'none';
+            chiefComplaintField.value = '';
+        }
+    });
+    
+    // Handle referral checkbox
+    referralCheckbox.addEventListener('change', function() {
+        referralFields.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Set default follow-up date (7 days from now)
+    const followUpField = document.getElementById('follow_up_date');
+    const followUpDate = new Date();
+    followUpDate.setDate(followUpDate.getDate() + 7);
+    followUpField.value = followUpDate.toISOString().split('T')[0];
+    
+    // Form validation
+    document.getElementById('consultationForm').addEventListener('submit', function(e) {
+        if (!visitSelect.value) {
+            e.preventDefault();
+            alert('Please select a patient visit');
+            visitSelect.focus();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

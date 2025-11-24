@@ -58,5 +58,29 @@ urlpatterns = [
     path('ajax/update-drug/<int:drug_id>/', views.drug_update_ajax, name='drug-update-ajax'),
     path('reports/low-stock/', views.low_stock_report, name='low-stock-report'),
     path('reports/expiring/', views.expiring_stock_report, name='expiring-stock-report'),
+    
+    # =============================================================================
+    # CONSULTATIONS
+    # =============================================================================
+    path('consultations/', views.consultation_list, name='consultation-list'),
+    path('consultations/new/', views.consultation_create, name='consultation-create'),
+    path('consultations/<int:consultation_id>/', views.consultation_detail, name='consultation-detail'),
+    path('consultations/<int:consultation_id>/update/', views.consultation_update, name='consultation-update'),
+    path('consultations/<int:consultation_id>/complete/', views.consultation_complete, name='consultation-complete'),
+    
+    # =============================================================================
+    # CLINICAL NOTES
+    # =============================================================================
+    path('clinical-notes/', views.clinical_notes_list, name='clinical-notes-list'),
+    path('clinical-notes/new/', views.clinical_note_create, name='clinical-note-create'),
+    path('clinical-notes/<int:note_id>/', views.clinical_note_detail, name='clinical-note-detail'),
+    path('clinical-notes/<int:note_id>/update/', views.clinical_note_update, name='clinical-note-update'),
+    path('clinical-notes/<int:note_id>/delete/', views.clinical_note_delete, name='clinical-note-delete'),
+    
+    # =============================================================================
+    # AJAX ENDPOINTS
+    # =============================================================================
+    path('ajax/patient-search/', views.patient_search_ajax, name='patient-search-ajax'),
+    path('ajax/visit-search/', views.visit_search_ajax, name='visit-search-ajax')
   
 ]

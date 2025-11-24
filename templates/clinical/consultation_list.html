@@ -1,0 +1,392 @@
+﻿{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Consultations - MediSphere HMS{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-clipboard2-pulse me-2"></i>Consultations</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item">Clinical Services</li>
+            <li class="breadcrumb-item active">Consultations</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Consultations</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #e3f2fd; color: #2196f3;">
+                            <i class="bi bi-clipboard2-pulse"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ stats.total_today }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Completed Today</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #e8f5e9; color: #4caf50;">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ stats.completed_today }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">Ongoing</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #fff3e0; color: #ff9800;">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ stats.ongoing }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card info-card">
+                <div class="card-body">
+                    <h5 class="card-title">This Month</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                             style="background: #f3e5f5; color: #9c27b0;">
+                            <i class="bi bi-calendar-month"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ stats.total_this_month }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <div class="header-content">
+                        <h5 class="card-title mb-3 text-white">
+                            <i class="bi bi-list-ul me-2"></i>All Consultations
+                        </h5>
+                        
+                        <!-- Toolbar -->
+                        <div class="toolbar-container">
+                            <div class="toolbar-filters">
+                                <!-- Search -->
+                                <div class="search-wrapper">
+                                    <form method="get" class="d-flex">
+                                        <div class="input-group input-group-modern">
+                                            <span class="input-group-text bg-white border-end-0">
+                                                <i class="bi bi-search text-muted"></i>
+                                            </span>
+                                            <input type="text" 
+                                                   class="form-control border-start-0 ps-0" 
+                                                   placeholder="Search by patient, visit number..." 
+                                                   name="search"
+                                                   value="{{ search_query }}">
+                                        </div>
+                                    </form>
+                                </div>
+                                
+                                <!-- Doctor Filter -->
+                                <div class="filter-wrapper">
+                                    <select class="form-select form-select-modern" id="doctorFilter" name="doctor">
+                                        <option value="">All Doctors</option>
+                                        {% for doctor in doctors %}
+                                        <option value="{{ doctor.id }}" {% if doctor_filter == doctor.id|stringformat:"s" %}selected{% endif %}>
+                                            Dr. {{ doctor.get_full_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <!-- Status Filter -->
+                                <div class="filter-wrapper">
+                                    <select class="form-select form-select-modern" id="statusFilter" name="status">
+                                        <option value="">All Status</option>
+                                        <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                                        <option value="ongoing" {% if status_filter == 'ongoing' %}selected{% endif %}>Ongoing</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Date Filter -->
+                                <div class="filter-wrapper">
+                                    <input type="date" 
+                                           class="form-control form-select-modern" 
+                                           id="dateFilter" 
+                                           name="date"
+                                           value="{{ date_filter }}">
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="toolbar-actions">
+                                <button type="button" 
+                                        class="btn btn-outline-light btn-icon" 
+                                        id="refreshButton"
+                                        title="Refresh">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                                
+                                <div class="vr"></div>
+                                
+                                <a href="{% url 'consultation-create' %}" class="btn btn-light btn-action">
+                                    <i class="bi bi-plus-circle me-2"></i>
+                                    <span>New Consultation</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if consultations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Visit #</th>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Date/Time</th>
+                                    <th>Diagnosis</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consultation in consultations %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ consultation.visit.visit_number }}</strong>
+                                    </td>
+                                    <td>
+                                        <strong>{{ consultation.visit.patient.full_name }}</strong>
+                                        <div class="text-muted small">{{ consultation.visit.patient.patient_number }}</div>
+                                    </td>
+                                    <td>Dr. {{ consultation.doctor.get_full_name }}</td>
+                                    <td>
+                                        {{ consultation.consultation_start|date:"Y-m-d" }}
+                                        <div class="text-muted small">{{ consultation.consultation_start|date:"H:i" }}</div>
+                                    </td>
+                                    <td>{{ consultation.final_diagnosis|truncatewords:8 }}</td>
+                                    <td>
+                                        {% if consultation.consultation_end %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Completed
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-hourglass-split"></i> Ongoing
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'consultation-detail' consultation.id %}" 
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {% if consultation.consultation_end is None %}
+                                        <a href="{% url 'consultation-update' consultation.id %}" 
+                                           class="btn btn-sm btn-outline-secondary"
+                                           title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if consultations.has_other_pages %}
+                    <div class="card-footer bg-light">
+                        <nav>
+                            <ul class="pagination justify-content-center mb-0">
+                                {% if consultations.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ consultations.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if doctor_filter %}&doctor={{ doctor_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">Previous</a>
+                                </li>
+                                {% endif %}
+                                
+                                <li class="page-item active">
+                                    <span class="page-link">Page {{ consultations.number }} of {{ consultations.paginator.num_pages }}</span>
+                                </li>
+                                
+                                {% if consultations.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ consultations.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if doctor_filter %}&doctor={{ doctor_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_filter %}&date={{ date_filter }}{% endif %}">Next</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-clipboard2-pulse" style="font-size: 3rem; color: #6c757d;"></i>
+                        <p class="text-muted mt-3">No consultations found</p>
+                        <a href="{% url 'consultation-create' %}" class="btn btn-primary mt-2">
+                            <i class="bi bi-plus-circle me-2"></i>Create First Consultation
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+/* Include the same professional toolbar styles from the drug inventory page */
+.toolbar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.toolbar-filters {
+    display: flex;
+    gap: 0.75rem;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.search-wrapper {
+    min-width: 280px;
+    flex: 1;
+    max-width: 350px;
+}
+
+.input-group-modern {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.filter-wrapper {
+    min-width: 180px;
+}
+
+.form-select-modern {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.375rem;
+    padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+    font-size: 0.9375rem;
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.btn-icon {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.vr {
+    width: 1px;
+    height: 24px;
+    background-color: rgba(255, 255, 255, 0.3);
+    opacity: 1;
+}
+
+.card-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+}
+
+@keyframes rotate360 {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.btn-icon.rotating i {
+    animation: rotate360 0.6s ease-in-out;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Refresh button
+    document.getElementById('refreshButton').addEventListener('click', function() {
+        this.classList.add('rotating');
+        setTimeout(() => {
+            this.classList.remove('rotating');
+        }, 600);
+        window.location.reload();
+    });
+    
+    // Auto-submit filters on change
+    document.getElementById('doctorFilter').addEventListener('change', function() {
+        this.form.submit();
+    });
+    
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        this.form.submit();
+    });
+    
+    document.getElementById('dateFilter').addEventListener('change', function() {
+        this.form.submit();
+    });
+});
+</script>
+{% endblock %}
