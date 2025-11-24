@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue Ticket - {{ visit.visit_number }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+            background: white;
+        }
+        
+        .ticket {
+            width: 80mm;
+            margin: 0 auto;
+            border: 2px dashed #333;
+            padding: 15px;
+            background: white;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .hospital-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .hospital-info {
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .queue-number-section {
+            text-align: center;
+            padding: 20px 0;
+            background: #f0f0f0;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        
+        .queue-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .queue-number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .details-section {
+            margin: 15px 0;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dotted #ddd;
+            font-size: 11px;
+        }
+        
+        .detail-label {
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .detail-value {
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .priority-1 { background: #e74c3c; }
+        .priority-2 { background: #e67e22; }
+        .priority-3 { background: #f39c12; }
+        .priority-4 { background: #3498db; }
+        .priority-5 { background: #95a5a6; }
+        
+        .barcode {
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .barcode-value {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            letter-spacing: 2px;
+            margin-top: 5px;
+        }
+        
+        .footer {
+            text-align: center;
+            padding-top: 15px;
+            border-top: 2px solid #333;
+            margin-top: 15px;
+            font-size: 9px;
+            color: #666;
+        }
+        
+        .instructions {
+            background: #fffbea;
+            border: 1px solid #ffd966;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .instructions strong {
+            display: block;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+            }
+            .ticket {
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <!-- Header -->
+        <div class="header">
+            <div class="hospital-name">{{ hospital.hospital_name }}</div>
+            <div class="hospital-info">{{ hospital.hospital_address }}</div>
+            <div class="hospital-info">Tel: {{ hospital.hospital_phone }}</div>
+        </div>
+        
+        <!-- Queue Number -->
+        <div class="queue-number-section">
+            <div class="queue-label">YOUR QUEUE NUMBER</div>
+            <div class="queue-number">{{ visit.queue_number }}</div>
+        </div>
+        
+        <!-- Visit Details -->
+        <div class="details-section">
+            <div class="detail-row">
+                <span class="detail-label">Visit Number:</span>
+                <span class="detail-value">{{ visit.visit_number }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Patient Name:</span>
+                <span class="detail-value">{{ visit.patient.full_name }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Patient Number:</span>
+                <span class="detail-value">{{ visit.patient.patient_number }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Visit Type:</span>
+                <span class="detail-value">{{ visit.get_visit_type_display }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Date:</span>
+                <span class="detail-value">{{ print_time|date:"M d, Y" }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Time:</span>
+                <span class="detail-value">{{ print_time|date:"h:i A" }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Priority:</span>
+                <span class="priority-badge priority-{{ visit.priority_level }}">
+                    {% if visit.priority_level == 1 %}CRITICAL
+                    {% elif visit.priority_level == 2 %}EMERGENCY
+                    {% elif visit.priority_level == 3 %}URGENT
+                    {% elif visit.priority_level == 4 %}NORMAL
+                    {% elif visit.priority_level == 5 %}LOW
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        
+        <!-- Barcode -->
+        <div class="barcode">
+            <svg id="barcode"></svg>
+            <div class="barcode-value">{{ visit.visit_number }}</div>
+        </div>
+        
+        <!-- Instructions -->
+        <div class="instructions">
+            <strong>Important Instructions:</strong>
+            • Please wait for your number to be called<br>
+            • Keep this ticket with you at all times<br>
+            • Present this ticket at each service point<br>
+            • Average wait time: 15-30 minutes
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>Thank you for choosing {{ hospital.hospital_name }}</p>
+            <p>For assistance, please contact reception</p>
+            <p style="margin-top: 10px;">--- KEEP THIS TICKET ---</p>
+        </div>
+    </div>
+    
+    <!-- Barcode Library -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script>
+        // Generate barcode
+        JsBarcode("#barcode", "{{ visit.visit_number }}", {
+            format: "CODE128",
+            width: 2,
+            height: 50,
+            displayValue: false
+        });
+        
+        // Auto print on load
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

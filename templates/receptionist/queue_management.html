@@ -1,84 +1,191 @@
-{% extends "base/base.html" %}
+{% extends 'base/base.html' %}
 {% load static %}
 
 {% block title %}Queue Management{% endblock %}
 
+{% block extra_css %}
+<style>
+    .stats-card {
+        border-radius: 10px;
+        border: none;
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    }
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+    .priority-badge-1 { background: #dc3545; color: white; }
+    .priority-badge-2 { background: #fd7e14; color: white; }
+    .priority-badge-3 { background: #ffc107; color: black; }
+    .priority-badge-4 { background: #0dcaf0; color: black; }
+    .priority-badge-5 { background: #6c757d; color: white; }
+    
+    .queue-item {
+        transition: all 0.3s;
+        border-left: 4px solid transparent;
+    }
+    .queue-item:hover {
+        background: #f8f9fa;
+        border-left-color: #667eea;
+        cursor: pointer;
+    }
+    .queue-item.selected {
+        background: #e7f3ff;
+        border-left-color: #0d6efd;
+    }
+    
+    .status-badge {
+        padding: 0.35rem 0.65rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .wait-time {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    .wait-time.critical {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    
+    .refresh-btn {
+        animation: rotate 2s linear infinite;
+        animation-play-state: paused;
+    }
+    .refresh-btn.spinning {
+        animation-play-state: running;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .patient-details-panel {
+        border-left: 3px solid #667eea;
+    }
+    
+    .quick-action-btn {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .empty-state {
+        padding: 3rem;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .filter-chip {
+        display: inline-block;
+        padding: 0.4rem 1rem;
+        margin: 0.2rem;
+        border-radius: 20px;
+        border: 2px solid #dee2e6;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .filter-chip:hover {
+        border-color: #667eea;
+        background: #f0f0ff;
+    }
+    .filter-chip.active {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
+<!-- Page Title -->
 <div class="pagetitle">
-    <h1><i class="bi bi-list-ol"></i> Queue Management</h1>
+    <h1><i class="bi bi-list-task me-2"></i>Queue Management</h1>
     <nav>
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'receptionist:receptionist_dashboard' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
             <li class="breadcrumb-item active">Queue Management</li>
         </ol>
     </nav>
 </div>
 
-<section class="section dashboard">
-    <!-- Queue Statistics -->
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <div class="card info-card" style="border-left: 4px solid #FFA500;">
-                <div class="card-body">
-                    <h5 class="card-title">In Queue</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #FFA500;">
-                            <i class="bi bi-hourglass-split text-white"></i>
+<section class="section">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xxl-3 col-md-6">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 text-white-50">Total Patients</h6>
+                            <h2 class="mb-0" id="stat-total">{{ stats.total_patients }}</h2>
                         </div>
-                        <div class="ps-3">
-                            <h6>{{ total_in_queue }}</h6>
-                            <span class="text-muted small">Waiting</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card info-card" style="border-left: 4px solid #2196F3;">
-                <div class="card-body">
-                    <h5 class="card-title">In Triage</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #2196F3;">
-                            <i class="bi bi-heart-pulse text-white"></i>
-                        </div>
-                        <div class="ps-3">
-                            <h6>{{ in_triage.count }}</h6>
-                            <span class="text-muted small">Patients</span>
+                        <div class="stats-icon bg-white bg-opacity-25">
+                            <i class="bi bi-people-fill"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-3">
-            <div class="card info-card" style="border-left: 4px solid #9C27B0;">
-                <div class="card-body">
-                    <h5 class="card-title">In Consultation</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #9C27B0;">
-                            <i class="bi bi-person-video2 text-white"></i>
+        
+        <div class="col-xxl-3 col-md-6">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 text-white-50">Waiting</h6>
+                            <h2 class="mb-0" id="stat-waiting">{{ stats.waiting }}</h2>
                         </div>
-                        <div class="ps-3">
-                            <h6>{{ in_consultation.count }}</h6>
-                            <span class="text-muted small">With Doctors</span>
+                        <div class="stats-icon bg-white bg-opacity-25">
+                            <i class="bi bi-hourglass-split"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-3">
-            <div class="card info-card" style="border-left: 4px solid #4CAF50;">
-                <div class="card-body">
-                    <h5 class="card-title">Completed</h5>
-                    <div class="d-flex align-items-center">
-                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #4CAF50;">
-                            <i class="bi bi-check-circle text-white"></i>
+        
+        <div class="col-xxl-3 col-md-6">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 text-white-50">In Progress</h6>
+                            <h2 class="mb-0" id="stat-in-progress">{{ stats.in_triage|add:stats.in_consultation }}</h2>
                         </div>
-                        <div class="ps-3">
-                            <h6>{{ completed_today }}</h6>
-                            <span class="text-muted small">Today</span>
+                        <div class="stats-icon bg-white bg-opacity-25">
+                            <i class="bi bi-activity"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xxl-3 col-md-6">
+            <div class="card stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 text-white-50">Avg Wait Time</h6>
+                            <h2 class="mb-0" id="stat-avg-wait">{{ stats.average_wait_time }}<small>min</small></h2>
+                        </div>
+                        <div class="stats-icon bg-white bg-opacity-25">
+                            <i class="bi bi-clock-history"></i>
                         </div>
                     </div>
                 </div>
@@ -86,173 +193,201 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h5 class="card-title mb-0">Queue Dashboard</h5>
-                            <small class="text-muted">Average Wait Time: {{ average_wait_time }} minutes</small>
+    <div class="row">
+        <!-- Queue List -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-list-ol me-2 text-primary"></i>Patient Queue
+                            </h5>
                         </div>
-                        <div>
-                            <a href="{% url 'receptionist:receptionist_create_visit' %}" class="btn btn-primary">
-                                <i class="bi bi-plus-circle"></i> Add to Queue
-                            </a>
-                            <button class="btn btn-outline-secondary" onclick="window.print()">
-                                <i class="bi bi-printer"></i> Print Queue
+                        <div class="col-auto">
+                            <button class="btn btn-sm btn-primary" id="callNextBtn">
+                                <i class="bi bi-megaphone me-1"></i>Call Next
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="refreshBtn">
+                                <i class="bi bi-arrow-clockwise refresh-btn"></i>
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Waiting Patients -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="bi bi-hourglass-split text-warning"></i> Waiting Patients
-                        <span class="badge bg-warning">{{ waiting_patients.count }}</span>
-                    </h5>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Queue #</th>
-                                    <th>Patient</th>
-                                    <th>Patient #</th>
-                                    <th>Visit Type</th>
-                                    <th>Priority</th>
-                                    <th>Chief Complaint</th>
-                                    <th>Arrival Time</th>
-                                    <th>Wait Time</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for visit in waiting_patients %}
-                                <tr class="{% if visit.priority_level <= 2 %}table-danger{% endif %}">
-                                    <td>
-                                        <strong class="text-primary">{{ visit.queue_number }}</strong>
-                                    </td>
-                                    <td>
-                                        <a href="{% url 'receptionist:receptionist_patient_detail' visit.patient.id %}">
-                                            {{ visit.patient.full_name }}
-                                        </a>
-                                        <br>
-                                        <small class="text-muted">
-                                            <i class="bi bi-gender-{{ visit.patient.gender|lower }}"></i> 
-                                            {{ visit.patient.age }} yrs
-                                        </small>
-                                    </td>
-                                    <td>{{ visit.patient.patient_number }}</td>
-                                    <td>
-                                        <span class="badge bg-{% if visit.visit_type == 'EMERGENCY' %}danger{% else %}info{% endif %}">
-                                            {{ visit.get_visit_type_display }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{% if visit.priority_level == 1 %}danger{% elif visit.priority_level == 2 %}warning{% else %}secondary{% endif %}">
-                                            Priority {{ visit.priority_level }}
-                                        </span>
-                                    </td>
-                                    <td>{{ visit.chief_complaint|truncatewords:10 }}</td>
-                                    <td>{{ visit.arrival_time|time:"H:i" }}</td>
-                                    <td>
-                                        <span class="{% if visit.wait_time_minutes > 60 %}text-danger{% elif visit.wait_time_minutes > 30 %}text-warning{% endif %}">
-                                            {{ visit.wait_time_minutes }} min
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <a href="{% url 'receptionist:receptionist_print_queue_ticket' visit.id %}" 
-                                           class="btn btn-sm btn-outline-primary" target="_blank">
-                                            <i class="bi bi-printer"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="9" class="text-center text-muted">
-                                        <i class="bi bi-inbox"></i> No patients in queue
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div class="card-body p-0">
+                    <!-- Filters -->
+                    <div class="p-3 bg-light border-bottom">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" id="searchQueue" 
+                                           placeholder="Search by patient name, number, phone...">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterStatus">
+                                    <option value="">All Status</option>
+                                    <option value="WAITING">Waiting</option>
+                                    <option value="TRIAGE">Triage</option>
+                                    <option value="CONSULTATION">Consultation</option>
+                                    <option value="LABORATORY">Laboratory</option>
+                                    <option value="RADIOLOGY">Radiology</option>
+                                    <option value="PHARMACY">Pharmacy</option>
+                                    <option value="BILLING">Billing</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterPriority">
+                                    <option value="">All Priority</option>
+                                    <option value="1">Critical</option>
+                                    <option value="2">Emergency</option>
+                                    <option value="3">Urgent</option>
+                                    <option value="4">Normal</option>
+                                    <option value="5">Low</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Queue Items -->
+                    <div id="queueList" style="max-height: 600px; overflow-y: auto;">
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mt-2">Loading queue...</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Other Statuses -->
-    <div class="row mt-3">
-        <!-- In Triage -->
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="bi bi-heart-pulse text-info"></i> In Triage
-                        <span class="badge bg-info">{{ in_triage.count }}</span>
+        <!-- Patient Details Panel -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm patient-details-panel" id="patientDetailsCard">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-badge me-2 text-primary"></i>Patient Details
                     </h5>
-                    <ul class="list-group list-group-flush">
-                        {% for visit in in_triage %}
-                        <li class="list-group-item">
-                            <strong>Q{{ visit.queue_number }}</strong> - {{ visit.patient.full_name }}
-                            <br>
-                            <small class="text-muted">{{ visit.arrival_time|time:"H:i" }}</small>
-                        </li>
-                        {% empty %}
-                        <li class="list-group-item text-muted text-center">No patients</li>
-                        {% endfor %}
-                    </ul>
                 </div>
-            </div>
-        </div>
-
-        <!-- In Consultation -->
-        <div class="col-md-4">
-            <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="bi bi-person-video2 text-purple"></i> In Consultation
-                        <span class="badge" style="background-color: #9C27B0;">{{ in_consultation.count }}</span>
-                    </h5>
-                    <ul class="list-group list-group-flush">
-                        {% for visit in in_consultation %}
-                        <li class="list-group-item">
-                            <strong>Q{{ visit.queue_number }}</strong> - {{ visit.patient.full_name }}
-                            <br>
-                            <small class="text-muted">{{ visit.arrival_time|time:"H:i" }}</small>
-                        </li>
-                        {% empty %}
-                        <li class="list-group-item text-muted text-center">No patients</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- In Pharmacy/Lab -->
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="bi bi-capsule text-success"></i> Other Services
-                    </h5>
-                    <div class="mb-3">
-                        <strong>Laboratory</strong>
-                        <span class="badge bg-primary">{{ in_lab.count }}</span>
+                    <div class="empty-state" id="emptyState">
+                        <i class="bi bi-hand-index display-1 text-muted"></i>
+                        <p class="mt-3">Select a patient from the queue to view details</p>
                     </div>
-                    <div>
-                        <strong>Pharmacy</strong>
-                        <span class="badge bg-success">{{ in_pharmacy.count }}</span>
+
+                    <div id="patientDetailsContent" style="display: none;">
+                        <!-- Patient Info -->
+                        <div class="mb-3 pb-3 border-bottom">
+                            <div class="d-flex align-items-start mb-2">
+                                <div class="avatar avatar-lg bg-primary bg-gradient rounded-circle d-flex align-items-center justify-content-center me-3">
+                                    <i class="bi bi-person text-white fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0" id="detailPatientName">-</h5>
+                                    <p class="text-muted small mb-0" id="detailPatientNumber">-</p>
+                                </div>
+                            </div>
+                            <div class="row g-2 small">
+                                <div class="col-6">
+                                    <strong>Age:</strong> <span id="detailAge">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Gender:</strong> <span id="detailGender">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Phone:</strong> <span id="detailPhone">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Blood:</strong> <span id="detailBlood">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Visit Info -->
+                        <div class="mb-3 pb-3 border-bottom">
+                            <h6 class="text-uppercase text-muted small mb-2">Visit Information</h6>
+                            <div class="row g-2 small">
+                                <div class="col-6">
+                                    <strong>Visit#:</strong> <span id="detailVisitNumber">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Queue#:</strong> <span id="detailQueueNumber">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Arrival:</strong> <span id="detailArrivalTime">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Wait:</strong> <span id="detailWaitTime">-</span>
+                                </div>
+                                <div class="col-12 mt-2">
+                                    <strong>Status:</strong> <span id="detailStatus" class="status-badge ms-1">-</span>
+                                </div>
+                                <div class="col-12 mt-2">
+                                    <strong>Priority:</strong> <span id="detailPriority" class="badge ms-1">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chief Complaint -->
+                        <div class="mb-3 pb-3 border-bottom">
+                            <h6 class="text-uppercase text-muted small mb-2">Chief Complaint</h6>
+                            <p class="small mb-0" id="detailComplaint">-</p>
+                        </div>
+
+                        <!-- Triage Info -->
+                        <div class="mb-3 pb-3 border-bottom" id="triageSection" style="display: none;">
+                            <h6 class="text-uppercase text-muted small mb-2">Triage Assessment</h6>
+                            <div class="row g-2 small">
+                                <div class="col-6">
+                                    <strong>Temp:</strong> <span id="detailTemp">-</span>°C
+                                </div>
+                                <div class="col-6">
+                                    <strong>BP:</strong> <span id="detailBP">-</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Pulse:</strong> <span id="detailPulse">-</span> bpm
+                                </div>
+                                <div class="col-6">
+                                    <strong>SpO2:</strong> <span id="detailSpO2">-</span>%
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Medical Alerts -->
+                        <div class="mb-3 pb-3 border-bottom" id="alertsSection" style="display: none;">
+                            <h6 class="text-uppercase text-danger small mb-2">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>Alerts
+                            </h6>
+                            <div id="medicalAlerts"></div>
+                        </div>
+
+                        <!-- NHIF Info -->
+                        <div class="mb-3 pb-3 border-bottom">
+                            <h6 class="text-uppercase text-muted small mb-2">NHIF Status</h6>
+                            <p class="small mb-0">
+                                <span id="detailNHIFStatus">-</span>
+                                <span id="detailNHIFNumber" class="text-muted"></span>
+                            </p>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary quick-action-btn" id="updateStatusBtn">
+                                <i class="bi bi-arrow-right-circle me-2"></i>Update Status
+                            </button>
+                            <button class="btn btn-outline-primary quick-action-btn" id="changePriorityBtn">
+                                <i class="bi bi-flag me-2"></i>Change Priority
+                            </button>
+                            <button class="btn btn-outline-secondary quick-action-btn" id="assignDoctorBtn">
+                                <i class="bi bi-person-check me-2"></i>Assign to Doctor
+                            </button>
+                            <a href="#" class="btn btn-outline-info quick-action-btn" id="viewPatientBtn">
+                                <i class="bi bi-eye me-2"></i>View Full Details
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -260,27 +395,571 @@
     </div>
 </section>
 
-<style>
-.card-icon {
-    width: 50px;
-    height: 50px;
-}
+<!-- Update Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Visit Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">New Status</label>
+                    <select class="form-select" id="newStatus">
+                        <option value="WAITING">Waiting</option>
+                        <option value="TRIAGE">Triage</option>
+                        <option value="CONSULTATION">Consultation</option>
+                        <option value="LABORATORY">Laboratory</option>
+                        <option value="RADIOLOGY">Radiology</option>
+                        <option value="PHARMACY">Pharmacy</option>
+                        <option value="BILLING">Billing</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="CANCELLED">Cancelled</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes (Optional)</label>
+                    <textarea class="form-control" id="statusNotes" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmStatusUpdate">Update Status</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-.table-danger {
-    background-color: rgba(220, 53, 69, 0.1);
-}
+<!-- Change Priority Modal -->
+<div class="modal fade" id="changePriorityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Priority Level</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Priority Level</label>
+                    <select class="form-select" id="newPriority">
+                        <option value="1">1 - Critical (Life-threatening)</option>
+                        <option value="2">2 - Emergency (&lt;15 minutes)</option>
+                        <option value="3">3 - Urgent (&lt;60 minutes)</option>
+                        <option value="4">4 - Normal (&lt;4 hours)</option>
+                        <option value="5">5 - Low Priority</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reason for Change</label>
+                    <textarea class="form-control" id="priorityReason" rows="3" required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmPriorityChange">Update Priority</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-@media print {
-    .btn, .breadcrumb, .card-title button {
-        display: none;
-    }
-}
-</style>
+<!-- Assign Doctor Modal -->
+<div class="modal fade" id="assignDoctorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign to Doctor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Select Doctor</label>
+                    <select class="form-select" id="selectDoctor">
+                        <option value="">Choose a doctor...</option>
+                        {% for doctor in doctors %}
+                        <option value="{{ doctor.id }}">
+                            Dr. {{ doctor.get_full_name }} - {{ doctor.role.get_name_display }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    The patient will be moved to consultation status and the doctor will be notified.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmDoctorAssign">Assign Doctor</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+{% endblock %}
+
+{% block extra_js %}
 <script>
-// Auto-refresh every 30 seconds
-setTimeout(function() {
-    location.reload();
-}, 30000);
+let selectedVisitId = null;
+let refreshInterval = null;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadQueue();
+    updateStats();
+    
+    // Auto-refresh every 30 seconds
+    refreshInterval = setInterval(() => {
+        loadQueue(true); // Silent refresh
+        updateStats();
+    }, 30000);
+    
+    // Event listeners
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+        loadQueue();
+        updateStats();
+    });
+    
+    document.getElementById('searchQueue').addEventListener('input', debounce(loadQueue, 500));
+    document.getElementById('filterStatus').addEventListener('change', loadQueue);
+    document.getElementById('filterPriority').addEventListener('change', loadQueue);
+    
+    document.getElementById('callNextBtn').addEventListener('click', callNextPatient);
+    document.getElementById('updateStatusBtn').addEventListener('click', showUpdateStatusModal);
+    document.getElementById('changePriorityBtn').addEventListener('click', showChangePriorityModal);
+    document.getElementById('assignDoctorBtn').addEventListener('click', showAssignDoctorModal);
+    
+    document.getElementById('confirmStatusUpdate').addEventListener('click', updateVisitStatus);
+    document.getElementById('confirmPriorityChange').addEventListener('click', updatePriority);
+    document.getElementById('confirmDoctorAssign').addEventListener('click', assignDoctor);
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) clearInterval(refreshInterval);
+});
+
+// Load queue data
+function loadQueue(silent = false) {
+    if (!silent) {
+        document.getElementById('refreshBtn').querySelector('.refresh-btn').classList.add('spinning');
+    }
+    
+    const status = document.getElementById('filterStatus').value;
+    const priority = document.getElementById('filterPriority').value;
+    const search = document.getElementById('searchQueue').value;
+    
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (priority) params.append('priority', priority);
+    if (search) params.append('search', search);
+    
+    fetch(`{% url 'api_get_queue' %}?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderQueue(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading queue:', error);
+            showToast('Error loading queue data', 'danger');
+        })
+        .finally(() => {
+            if (!silent) {
+                document.getElementById('refreshBtn').querySelector('.refresh-btn').classList.remove('spinning');
+            }
+        });
+}
+
+// Render queue items
+function renderQueue(visits) {
+    const queueList = document.getElementById('queueList');
+    
+    if (visits.length === 0) {
+        queueList.innerHTML = `
+            <div class="empty-state">
+                <i class="bi bi-inbox display-1 text-muted"></i>
+                <p class="mt-3">No patients in queue</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    visits.forEach(visit => {
+        const priorityClass = `priority-badge-${visit.priority_level}`;
+        const statusBadge = getStatusBadge(visit.status);
+        const waitClass = visit.wait_time_minutes > 60 ? 'critical' : '';
+        
+        html += `
+            <div class="queue-item p-3 border-bottom ${selectedVisitId === visit.id ? 'selected' : ''}" 
+                 data-visit-id="${visit.id}" onclick="selectVisit(${visit.id})">
+                <div class="row align-items-center">
+                    <div class="col-auto">
+                        <div class="badge ${priorityClass} rounded-circle d-flex align-items-center justify-content-center" 
+                             style="width: 45px; height: 45px; font-size: 1.1rem;">
+                            ${visit.queue_number}
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <div>
+                                <h6 class="mb-0">${visit.patient.full_name}</h6>
+                                <small class="text-muted">${visit.patient.patient_number} | ${visit.patient.age}y ${visit.patient.gender}</small>
+                            </div>
+                            <span class="${statusBadge.class}">${statusBadge.text}</span>
+                        </div>
+                        <p class="small text-muted mb-1"><i class="bi bi-clipboard-pulse me-1"></i>${visit.chief_complaint}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-light text-dark">${visit.priority_display.text}</span>
+                            <span class="wait-time ${waitClass}">
+                                <i class="bi bi-clock me-1"></i>${visit.wait_time_minutes} min
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    queueList.innerHTML = html;
+}
+
+// Select a visit and show details
+function selectVisit(visitId) {
+    selectedVisitId = visitId;
+    
+    // Update UI
+    document.querySelectorAll('.queue-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    document.querySelector(`[data-visit-id="${visitId}"]`)?.classList.add('selected');
+    
+    // Load visit details
+    loadVisitDetails(visitId);
+}
+
+// Load visit details
+function loadVisitDetails(visitId) {
+    fetch(`{% url 'api_get_visit_details' 0 %}`.replace('0', visitId))
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderVisitDetails(data.data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading visit details:', error);
+            showToast('Error loading patient details', 'danger');
+        });
+}
+
+// Render visit details
+function renderVisitDetails(data) {
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('patientDetailsContent').style.display = 'block';
+    
+    // Patient info
+    document.getElementById('detailPatientName').textContent = data.patient.full_name;
+    document.getElementById('detailPatientNumber').textContent = data.patient.patient_number;
+    document.getElementById('detailAge').textContent = data.patient.age;
+    document.getElementById('detailGender').textContent = data.patient.gender;
+    document.getElementById('detailPhone').textContent = data.patient.phone;
+    document.getElementById('detailBlood').textContent = data.patient.blood_group || 'N/A';
+    
+    // Visit info
+    document.getElementById('detailVisitNumber').textContent = data.visit.visit_number;
+    document.getElementById('detailQueueNumber').textContent = data.visit.queue_number;
+    document.getElementById('detailArrivalTime').textContent = new Date(data.visit.arrival_time).toLocaleTimeString();
+    document.getElementById('detailWaitTime').textContent = data.visit.wait_time_minutes + ' min';
+    
+    const statusBadge = getStatusBadge(data.visit.status);
+    document.getElementById('detailStatus').className = statusBadge.class;
+    document.getElementById('detailStatus').textContent = statusBadge.text;
+    
+    const priorityBadge = `priority-badge-${data.visit.priority_level}`;
+    document.getElementById('detailPriority').className = `badge ${priorityBadge}`;
+    document.getElementById('detailPriority').textContent = data.visit.priority_level;
+    
+    document.getElementById('detailComplaint').textContent = data.visit.chief_complaint;
+    
+    // Triage info
+    if (data.triage && data.triage.done) {
+        document.getElementById('triageSection').style.display = 'block';
+        document.getElementById('detailTemp').textContent = data.triage.temperature || '-';
+        document.getElementById('detailBP').textContent = data.triage.bp || '-';
+        document.getElementById('detailPulse').textContent = data.triage.pulse || '-';
+        document.getElementById('detailSpO2').textContent = data.triage.oxygen_saturation || '-';
+    } else {
+        document.getElementById('triageSection').style.display = 'none';
+    }
+    
+    // Medical alerts
+    const alerts = [];
+    if (data.patient.allergies) alerts.push(`<div class="alert alert-danger py-1 px-2 small mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Allergies: ${data.patient.allergies}</div>`);
+    if (data.patient.chronic_conditions) alerts.push(`<div class="alert alert-warning py-1 px-2 small mb-1"><i class="bi bi-info-circle-fill me-1"></i>Conditions: ${data.patient.chronic_conditions}</div>`);
+    
+    if (alerts.length > 0) {
+        document.getElementById('alertsSection').style.display = 'block';
+        document.getElementById('medicalAlerts').innerHTML = alerts.join('');
+    } else {
+        document.getElementById('alertsSection').style.display = 'none';
+    }
+    
+    // NHIF info
+    document.getElementById('detailNHIFStatus').textContent = data.patient.nhif_status;
+    document.getElementById('detailNHIFNumber').textContent = data.patient.nhif_number ? `(${data.patient.nhif_number})` : '';
+    
+    // Update view link
+    document.getElementById('viewPatientBtn').href = `/patients/${data.patient.patient_number}/`;
+}
+
+// Get status badge HTML
+function getStatusBadge(status) {
+    const badges = {
+        'WAITING': { class: 'status-badge bg-warning text-dark', text: 'Waiting' },
+        'TRIAGE': { class: 'status-badge bg-info text-white', text: 'Triage' },
+        'CONSULTATION': { class: 'status-badge bg-primary text-white', text: 'Consultation' },
+        'LABORATORY': { class: 'status-badge bg-secondary text-white', text: 'Lab' },
+        'RADIOLOGY': { class: 'status-badge bg-secondary text-white', text: 'Radiology' },
+        'PHARMACY': { class: 'status-badge bg-success text-white', text: 'Pharmacy' },
+        'BILLING': { class: 'status-badge bg-dark text-white', text: 'Billing' },
+    };
+    return badges[status] || { class: 'status-badge bg-light text-dark', text: status };
+}
+
+// Update statistics
+function updateStats() {
+    fetch('{% url "api_get_queue_stats" %}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('stat-total').textContent = data.data.active_patients;
+                document.getElementById('stat-waiting').textContent = data.data.by_status.waiting;
+                document.getElementById('stat-in-progress').textContent = 
+                    data.data.by_status.triage + data.data.by_status.consultation;
+                document.getElementById('stat-avg-wait').innerHTML = 
+                    data.data.average_wait_time + '<small>min</small>';
+            }
+        })
+        .catch(error => console.error('Error updating stats:', error));
+}
+
+// Call next patient
+function callNextPatient() {
+    if (!confirm('Call the next patient in queue?')) return;
+    
+    fetch('{% url "api_call_next_patient" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`Called: ${data.data.patient_name} (Queue #${data.data.queue_number})`, 'success');
+            loadQueue();
+            updateStats();
+        } else {
+            showToast(data.message || 'No patients in queue', 'info');
+        }
+    })
+    .catch(error => {
+        console.error('Error calling patient:', error);
+        showToast('Error calling patient', 'danger');
+    });
+}
+
+// Show update status modal
+function showUpdateStatusModal() {
+    if (!selectedVisitId) {
+        showToast('Please select a patient first', 'warning');
+        return;
+    }
+    new bootstrap.Modal(document.getElementById('updateStatusModal')).show();
+}
+
+// Update visit status
+function updateVisitStatus() {
+    const newStatus = document.getElementById('newStatus').value;
+    const notes = document.getElementById('statusNotes').value;
+    
+    fetch('{% url "api_update_visit_status" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            visit_id: selectedVisitId,
+            status: newStatus,
+            notes: notes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Status updated successfully', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+            loadQueue();
+            loadVisitDetails(selectedVisitId);
+            updateStats();
+        } else {
+            showToast(data.error || 'Error updating status', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating status', 'danger');
+    });
+}
+
+// Show change priority modal
+function showChangePriorityModal() {
+    if (!selectedVisitId) {
+        showToast('Please select a patient first', 'warning');
+        return;
+    }
+    new bootstrap.Modal(document.getElementById('changePriorityModal')).show();
+}
+
+// Update priority
+function updatePriority() {
+    const newPriority = document.getElementById('newPriority').value;
+    const reason = document.getElementById('priorityReason').value;
+    
+    if (!reason.trim()) {
+        showToast('Please provide a reason for priority change', 'warning');
+        return;
+    }
+    
+    fetch('{% url "api_update_priority" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            visit_id: selectedVisitId,
+            priority_level: newPriority,
+            reason: reason
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Priority updated successfully', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('changePriorityModal')).hide();
+            document.getElementById('priorityReason').value = '';
+            loadQueue();
+            loadVisitDetails(selectedVisitId);
+        } else {
+            showToast(data.error || 'Error updating priority', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating priority', 'danger');
+    });
+}
+
+// Show assign doctor modal
+function showAssignDoctorModal() {
+    if (!selectedVisitId) {
+        showToast('Please select a patient first', 'warning');
+        return;
+    }
+    new bootstrap.Modal(document.getElementById('assignDoctorModal')).show();
+}
+
+// Assign doctor
+function assignDoctor() {
+    const doctorId = document.getElementById('selectDoctor').value;
+    
+    if (!doctorId) {
+        showToast('Please select a doctor', 'warning');
+        return;
+    }
+    
+    fetch('{% url "api_assign_doctor" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            visit_id: selectedVisitId,
+            doctor_id: doctorId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('assignDoctorModal')).hide();
+            document.getElementById('selectDoctor').value = '';
+            loadQueue();
+            loadVisitDetails(selectedVisitId);
+            updateStats();
+        } else {
+            showToast(data.error || 'Error assigning doctor', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error assigning doctor', 'danger');
+    });
+}
+
+// Utility functions
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showToast(message, type = 'info') {
+    // Assuming you have a toast notification system
+    // This is a simple alert fallback
+    const alertClass = {
+        'success': 'alert-success',
+        'danger': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    }[type];
+    
+    const toast = document.createElement('div');
+    toast.className = `alert ${alertClass} position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = '9999';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.remove(), 3000);
+}
 </script>
 {% endblock %}

@@ -90,7 +90,18 @@ urlpatterns = [
     path('patients-search/',  views.receptionist_search_patient_view,  name='receptionist_search_patient'),
     path('receptionist-patients/<str:patient_number>/', views.receptionist_patient_detail_view,  name='receptionist_patient_detail'),
     path('receptionist-patients/<str:patient_number>/edit/', views.receptionist_edit_patient_view, name='receptionist_edit_patient'),
-    path('queue/', views.receptionist_queue_management_view, name='receptionist_queue_management'),
+    
+    # Queue Management Main View
+    path('queue/', views.queue_management, name='queue_management'),
+    path('api/queue/list/', views.api_get_queue, name='api_get_queue'),
+    path('api/queue/stats/', views.api_get_queue_stats, name='api_get_queue_stats'),
+    path('api/queue/search/', views.api_search_queue, name='api_search_queue'),
+    path('api/queue/update-status/', views.api_update_visit_status, name='api_update_visit_status'),
+    path('api/queue/update-priority/', views.api_update_priority, name='api_update_priority'),
+    path('api/queue/assign-doctor/', views.api_assign_doctor, name='api_assign_doctor'),
+    path('api/queue/call-next/', views.api_call_next_patient, name='api_call_next_patient'),
+    path('api/queue/visit/<int:visit_id>/', views.api_get_visit_details, name='api_get_visit_details'),
+    
     path('queue/create-visit/', views.receptionist_create_visit_view,  name='receptionist_create_visit'),
     path('queue/create-visit/<int:patient_id>/',  views.receptionist_create_visit_view,  name='receptionist_create_visit_for_patient'),
     path('queue/print-ticket/<int:visit_id>/',  views.receptionist_print_queue_ticket_view, name='receptionist_print_queue_ticket'),

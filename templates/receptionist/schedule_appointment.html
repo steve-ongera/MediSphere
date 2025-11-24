@@ -1,0 +1,222 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Schedule Appointment{% endblock %}
+
+{% block content %}
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-calendar-plus me-2"></i>Schedule Appointment</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_view_appointments' %}">Appointments</a></li>
+            <li class="breadcrumb-item active">Schedule New</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-calendar-check me-2"></i>New Appointment Details
+                    </h5>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" id="appointmentForm">
+                        {% csrf_token %}
+                        
+                        <!-- Patient Selection -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-person-circle me-2 text-primary"></i>Patient Information
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="{{ form.patient.id_for_label }}" class="form-label">
+                                        Select Patient <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.patient class="form-select" %}
+                                    {% if form.patient.errors %}
+                                    <div class="text-danger small mt-1">{{ form.patient.errors.0 }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Can't find the patient? <a href="{% url 'receptionist_register_patient' %}" target="_blank">Register a new patient</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Doctor Selection -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-person-badge me-2 text-success"></i>Doctor Assignment
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="{{ form.doctor.id_for_label }}" class="form-label">
+                                        Select Doctor <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="doctor" id="id_doctor" class="form-select" required>
+                                        <option value="">Choose a doctor...</option>
+                                        {% for doctor in doctors %}
+                                        <option value="{{ doctor.id }}">
+                                            Dr. {{ doctor.get_full_name }} - {{ doctor.role.get_name_display }}
+                                            {% if doctor.department %} ({{ doctor.department.get_name_display }}){% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    {% if form.doctor.errors %}
+                                    <div class="text-danger small mt-1">{{ form.doctor.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Appointment Details -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-calendar-event me-2 text-info"></i>Appointment Details
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.appointment_datetime.id_for_label }}" class="form-label">
+                                        Date & Time <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.appointment_datetime class="form-control" type="datetime-local" %}
+                                    {% if form.appointment_datetime.errors %}
+                                    <div class="text-danger small mt-1">{{ form.appointment_datetime.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.duration_minutes.id_for_label }}" class="form-label">
+                                        Duration (minutes) <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.duration_minutes class="form-control" placeholder="30" %}
+                                    {% if form.duration_minutes.errors %}
+                                    <div class="text-danger small mt-1">{{ form.duration_minutes.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-12">
+                                    <label for="{{ form.appointment_type.id_for_label }}" class="form-label">
+                                        Appointment Type <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="appointment_type" id="id_appointment_type" class="form-select" required>
+                                        <option value="">Select type...</option>
+                                        <option value="New Visit">New Visit</option>
+                                        <option value="Follow-up">Follow-up</option>
+                                        <option value="Routine Check-up">Routine Check-up</option>
+                                        <option value="Consultation">Consultation</option>
+                                        <option value="Lab Results Review">Lab Results Review</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    {% if form.appointment_type.errors %}
+                                    <div class="text-danger small mt-1">{{ form.appointment_type.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-12">
+                                    <label for="{{ form.reason.id_for_label }}" class="form-label">
+                                        Reason for Appointment <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.reason class="form-control" rows="3" placeholder="Brief description of the reason for visit..." %}
+                                    {% if form.reason.errors %}
+                                    <div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-sticky me-2 text-warning"></i>Additional Information
+                            </h6>
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                        Notes (Optional)
+                                    </label>
+                                    {% render_field form.notes class="form-control" rows="3" placeholder="Any additional information..." %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reminder Settings -->
+                        <div class="mb-4">
+                            <div class="alert alert-info">
+                                <i class="bi bi-bell me-2"></i>
+                                <strong>SMS Reminder:</strong> An SMS reminder will be sent to the patient 24 hours before the appointment.
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                            <a href="{% url 'receptionist_view_appointments' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-calendar-check me-2"></i>Schedule Appointment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set minimum datetime to now
+    const datetimeInput = document.getElementById('id_appointment_datetime');
+    if (datetimeInput) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        datetimeInput.min = now.toISOString().slice(0, 16);
+    }
+    
+    // Form validation
+    const form = document.getElementById('appointmentForm');
+    form.addEventListener('submit', function(e) {
+        const patient = document.getElementById('id_patient').value;
+        const doctor = document.getElementById('id_doctor').value;
+        const datetime = document.getElementById('id_appointment_datetime').value;
+        const appointmentType = document.getElementById('id_appointment_type').value;
+        const reason = document.querySelector('[name="reason"]').value;
+        
+        if (!patient || !doctor || !datetime || !appointmentType || !reason.trim()) {
+            e.preventDefault();
+            alert('Please fill in all required fields marked with *');
+            return false;
+        }
+        
+        // Check if appointment is in the future
+        const appointmentDate = new Date(datetime);
+        if (appointmentDate <= new Date()) {
+            e.preventDefault();
+            alert('Appointment date must be in the future');
+            return false;
+        }
+    });
+});
+</script>
+
+<style>
+    .avatar {
+        width: 50px;
+        height: 50px;
+    }
+</style>
+{% endblock %}

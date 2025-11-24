@@ -1,0 +1,167 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Cancel Appointment{% endblock %}
+
+{% block content %}
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-x-circle me-2"></i>Cancel Appointment</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_view_appointments' %}">Appointments</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_appointment_detail' appointment.id %}">{{ appointment.appointment_number }}</a></li>
+            <li class="breadcrumb-item active">Cancel</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Warning Alert -->
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-3 fs-3"></i>
+                <div>
+                    <h5 class="alert-heading mb-1">Warning: Appointment Cancellation</h5>
+                    <p class="mb-0">This action cannot be undone. The patient will be notified via SMS about the cancellation.</p>
+                </div>
+            </div>
+
+            <!-- Appointment Details -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-danger text-white py-3">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-calendar-x me-2"></i>Appointment to Cancel
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small">Appointment Number</label>
+                            <div class="fw-bold fs-5">{{ appointment.appointment_number }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Status</label>
+                            <div><span class="badge bg-primary fs-6">{{ appointment.get_status_display }}</span></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Patient Name</label>
+                            <div class="fw-semibold">{{ appointment.patient.full_name }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Patient Number</label>
+                            <div>{{ appointment.patient.patient_number }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Doctor</label>
+                            <div>Dr. {{ appointment.doctor.get_full_name }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small">Phone Number</label>
+                            <div>{{ appointment.patient.phone_number }}</div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="text-muted small">Scheduled Date & Time</label>
+                            <div class="fw-semibold text-primary">
+                                <i class="bi bi-calendar3 me-2"></i>{{ appointment.appointment_datetime|date:"l, F d, Y" }}
+                                <span class="mx-2">|</span>
+                                <i class="bi bi-clock me-2"></i>{{ appointment.appointment_datetime|date:"h:i A" }}
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="text-muted small">Reason for Appointment</label>
+                            <div class="p-3 bg-light rounded">{{ appointment.reason }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cancellation Form -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pencil-square me-2 text-danger"></i>Cancellation Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="cancelForm">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="cancellation_reason" class="form-label">
+                                Reason for Cancellation <span class="text-danger">*</span>
+                            </label>
+                            <textarea 
+                                class="form-control" 
+                                id="cancellation_reason" 
+                                name="cancellation_reason" 
+                                rows="4" 
+                                required
+                                placeholder="Please provide a detailed reason for cancelling this appointment..."></textarea>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle me-1"></i>
+                                This reason will be included in the SMS notification to the patient.
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-info-circle me-2"></i>What happens next?
+                            </h6>
+                            <ul class="mb-0 ps-3">
+                                <li>The appointment status will be changed to "Cancelled"</li>
+                                <li>An SMS notification will be sent to {{ appointment.patient.phone_number }}</li>
+                                <li>The doctor will be notified about the cancellation</li>
+                                <li>The appointment slot will become available for rebooking</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                            <a href="{% url 'receptionist_appointment_detail' appointment.id %}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-arrow-left me-2"></i>Go Back
+                            </a>
+                            <button type="submit" class="btn btn-danger btn-lg" id="confirmCancelBtn">
+                                <i class="bi bi-x-circle me-2"></i>Confirm Cancellation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('cancelForm');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    
+    form.addEventListener('submit', function(e) {
+        const reason = document.getElementById('cancellation_reason').value.trim();
+        
+        if (!reason) {
+            e.preventDefault();
+            alert('Please provide a reason for cancellation');
+            return false;
+        }
+        
+        if (reason.length < 10) {
+            e.preventDefault();
+            alert('Please provide a more detailed reason (at least 10 characters)');
+            return false;
+        }
+        
+        if (!confirm('Are you absolutely sure you want to cancel this appointment? This action cannot be undone.')) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Disable button to prevent double submission
+        cancelBtn.disabled = true;
+        cancelBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Cancelling...';
+    });
+});
+</script>
+{% endblock %}

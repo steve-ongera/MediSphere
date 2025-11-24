@@ -10,50 +10,88 @@
     <ul class="sidebar-nav" id="sidebar-nav">
         <!-- Dashboard -->
         <li class="nav-item">
-            <a class="nav-link" href="{% url 'receptionist_dashboard'%}" style="border-left: 3px solid #1a76d1;">
-                <i class="bi bi-speedometer2" style="color: #1a76d1;"></i>
+            <a class="nav-link {% if request.resolver_match.url_name == 'receptionist_dashboard' %}active{% endif %}" 
+               href="{% url 'receptionist_dashboard' %}">
+                <i class="bi bi-speedometer2"></i>
                 <span>Dashboard</span>
             </a>
         </li>
 
         <!-- Patient Registration -->
         <li class="nav-item">
-            <a class="nav-link collapsed" data-bs-target="#patient-nav" data-bs-toggle="collapse" href="#">
-                <i class="bi bi-people" style="color: #1a76d1;"></i>
-                <span>Patient Management</span>
-                <i class="bi bi-chevron-down ms-auto"></i>
+            <a class="nav-link {% if request.resolver_match.url_name == 'receptionist_register_patient' %}active{% endif %}" 
+               href="{% url 'receptionist_register_patient' %}">
+                <i class="bi bi-person-plus"></i>
+                <span>Register Patient</span>
             </a>
-            <ul id="patient-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
-                <li><a href="{% url 'receptionist_register_patient'%}"><i class="bi bi-person-plus"></i> Register New Patient</a></li>
-                <li><a href="{% url 'receptionist_patient_records'%}"><i class="bi bi-card-checklist"></i> Patient Records</a></li>
-                
-            </ul>
+        </li>
+
+        <!-- Patient Records -->
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'receptionist_patient_records' %}active{% endif %}" 
+               href="{% url 'receptionist_patient_records' %}">
+                <i class="bi bi-card-checklist"></i>
+                <span>Patient Records</span>
+            </a>
+        </li>
+
+        <!-- Search Patient -->
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'receptionist_search_patient' %}active{% endif %}" 
+               href="{% url 'receptionist_search_patient' %}">
+                <i class="bi bi-search"></i>
+                <span>Search Patient</span>
+            </a>
         </li>
 
         <!-- Queue Management -->
         <li class="nav-item">
-            <a class="nav-link collapsed" href="#">
-                <i class="bi bi-list-ol" style="color: #1a76d1;"></i>
+            <a class="nav-link {% if request.resolver_match.url_name == 'queue_management' %}active{% endif %}" 
+               href="{% url 'queue_management' %}">
+                <i class="bi bi-list-ol"></i>
                 <span>Queue Management</span>
             </a>
         </li>
 
-        <!-- Appointments -->
+        <!-- Create Visit -->
         <li class="nav-item">
-            <a class="nav-link collapsed" data-bs-target="#appointment-nav" data-bs-toggle="collapse" href="#">
-                <i class="bi bi-calendar-check" style="color: #1a76d1;"></i>
-                <span>Appointments</span>
-                <i class="bi bi-chevron-down ms-auto"></i>
+            <a class="nav-link {% if request.resolver_match.url_name == 'receptionist_create_visit' %}active{% endif %}" 
+               href="{% url 'receptionist_create_visit' %}">
+                <i class="bi bi-clipboard-plus"></i>
+                <span>Create Visit</span>
             </a>
-            <ul id="appointment-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
-                <li><a href="{% url 'receptionist_schedule_appointment'%}"><i class="bi bi-plus-circle"></i> Schedule Appointment</a></li>
-                <li><a href="{% url 'receptionist_view_appointments'%}"><i class="bi bi-calendar3"></i> View Appointments</a></li>
-            </ul>
+        </li>
+
+        <!-- Schedule Appointment -->
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'receptionist_schedule_appointment' %}active{% endif %}" 
+               href="{% url 'receptionist_schedule_appointment' %}">
+                <i class="bi bi-calendar-plus"></i>
+                <span>Schedule Appointment</span>
+            </a>
+        </li>
+
+        <!-- View Appointments -->
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'receptionist_view_appointments' %}active{% endif %}" 
+               href="{% url 'receptionist_view_appointments' %}">
+                <i class="bi bi-calendar3"></i>
+                <span>View Appointments</span>
+            </a>
+        </li>
+
+        <!-- Daily Reports -->
+        <li class="nav-item">
+            <a class="nav-link {% if request.resolver_match.url_name == 'receptionist_daily_report' %}active{% endif %}" 
+               href="{% url 'receptionist_daily_report' %}">
+                <i class="bi bi-graph-up"></i>
+                <span>Daily Reports</span>
+            </a>
         </li>
 
         <!-- Logout -->
         <li class="nav-item">
-            <a class="nav-link collapsed" href="{% url 'logout'%}">
+            <a class="nav-link" href="{% url 'logout' %}">
                 <i class="bi bi-box-arrow-right"></i>
                 <span>Logout</span>
             </a>
@@ -61,3 +99,15 @@
     </ul>
 </aside>
 
+<style>
+.sidebar .nav-link.active {
+    background-color: #1a76d1;
+    color: white !important;
+    border-left: 3px solid #1a76d1;
+}
+
+.sidebar .nav-link.active i {
+    color: white !important;
+}
+
+</style>

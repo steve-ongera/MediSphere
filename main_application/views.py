@@ -3441,64 +3441,647 @@ def receptionist_edit_patient_view(request, patient_number):
 # =============================================================================
 # QUEUE MANAGEMENT
 # =============================================================================
+# receptionist/views.py
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods, require_POST
+from django.db import transaction
+from django.db.models import Q, Count, Avg, F, ExpressionWrapper, fields
+from django.utils import timezone
+from datetime import datetime, timedelta
+import json
+
+from .models import (
+    Patient, PatientVisit, TriageAssessment, 
+    User, Department, Notification
+)
+
+
+# =============================================================================
+# QUEUE MANAGEMENT - MAIN VIEW
+# =============================================================================
 
 @login_required
-def receptionist_queue_management_view(request):
-    """Manage patient queue"""
-    
+def queue_management(request):
+    """Main queue management dashboard"""
     today = timezone.now().date()
     
-    # Get today's visits by status
-    waiting_patients = PatientVisit.objects.filter(
+    # Get all active visits for today
+    active_visits = PatientVisit.objects.filter(
         visit_date=today,
-        status='WAITING'
-    ).select_related('patient').order_by('priority_level', 'arrival_time')
+        status__in=['WAITING', 'TRIAGE', 'CONSULTATION', 'LABORATORY', 
+                    'RADIOLOGY', 'PHARMACY', 'BILLING']
+    ).select_related(
+        'patient', 'triage'
+    ).order_by('priority_level', 'queue_number')
     
-    in_triage = PatientVisit.objects.filter(
-        visit_date=today,
-        status='TRIAGE'
-    ).select_related('patient')
+    # Statistics
+    stats = {
+        'total_patients': active_visits.count(),
+        'waiting': active_visits.filter(status='WAITING').count(),
+        'in_triage': active_visits.filter(status='TRIAGE').count(),
+        'in_consultation': active_visits.filter(status='CONSULTATION').count(),
+        'average_wait_time': _calculate_average_wait_time(active_visits),
+    }
     
-    in_consultation = PatientVisit.objects.filter(
-        visit_date=today,
-        status='CONSULTATION'
-    ).select_related('patient')
+    # Get departments for filtering
+    departments = Department.objects.filter(
+        is_active=True,
+        name__in=['TRIAGE', 'OUTPATIENT', 'LABORATORY', 'RADIOLOGY', 'PHARMACY', 'BILLING']
+    )
     
-    in_lab = PatientVisit.objects.filter(
-        visit_date=today,
-        status='LABORATORY'
-    ).select_related('patient')
-    
-    in_pharmacy = PatientVisit.objects.filter(
-        visit_date=today,
-        status='PHARMACY'
-    ).select_related('patient')
-    
-    completed_today = PatientVisit.objects.filter(
-        visit_date=today,
-        status='COMPLETED'
-    ).count()
-    
-    # Queue statistics
-    total_in_queue = waiting_patients.count()
-    average_wait_time = 0
-    if waiting_patients:
-        total_wait = sum([v.wait_time_minutes for v in waiting_patients])
-        average_wait_time = total_wait / total_in_queue if total_in_queue > 0 else 0
+    # Get available doctors for assignment
+    doctors = User.objects.filter(
+        role__name__in=['DOCTOR', 'CLINICAL_OFFICER'],
+        is_active_staff=True
+    ).select_related('role', 'department')
     
     context = {
-        'waiting_patients': waiting_patients,
-        'in_triage': in_triage,
-        'in_consultation': in_consultation,
-        'in_lab': in_lab,
-        'in_pharmacy': in_pharmacy,
-        'completed_today': completed_today,
-        'total_in_queue': total_in_queue,
-        'average_wait_time': round(average_wait_time),
-        'title': 'Queue Management'
+        'stats': stats,
+        'departments': departments,
+        'doctors': doctors,
+        'page_title': 'Queue Management',
     }
     
     return render(request, 'receptionist/queue_management.html', context)
+
+
+def _calculate_average_wait_time(visits):
+    """Calculate average waiting time in minutes"""
+    if not visits.exists():
+        return 0
+    
+    total_minutes = 0
+    count = 0
+    
+    for visit in visits:
+        if visit.status != 'COMPLETED':
+            minutes = visit.wait_time_minutes
+            total_minutes += minutes
+            count += 1
+    
+    return round(total_minutes / count) if count > 0 else 0
+
+
+# =============================================================================
+# AJAX API - GET QUEUE DATA
+# =============================================================================
+
+@login_required
+@require_http_methods(["GET"])
+def api_get_queue(request):
+    """Get current queue data with filters"""
+    today = timezone.now().date()
+    
+    # Get filters from request
+    status_filter = request.GET.get('status', '')
+    priority_filter = request.GET.get('priority', '')
+    search_query = request.GET.get('search', '')
+    
+    # Base queryset
+    visits = PatientVisit.objects.filter(
+        visit_date=today,
+        status__in=['WAITING', 'TRIAGE', 'CONSULTATION', 'LABORATORY', 
+                    'RADIOLOGY', 'PHARMACY', 'BILLING']
+    ).select_related('patient', 'triage')
+    
+    # Apply filters
+    if status_filter:
+        visits = visits.filter(status=status_filter)
+    
+    if priority_filter:
+        visits = visits.filter(priority_level=int(priority_filter))
+    
+    if search_query:
+        visits = visits.filter(
+            Q(patient__patient_number__icontains=search_query) |
+            Q(patient__first_name__icontains=search_query) |
+            Q(patient__last_name__icontains=search_query) |
+            Q(patient__phone_number__icontains=search_query)
+        )
+    
+    # Order by priority and queue number
+    visits = visits.order_by('priority_level', 'queue_number')
+    
+    # Serialize data
+    queue_data = []
+    for visit in visits:
+        triage = getattr(visit, 'triage', None)
+        
+        queue_data.append({
+            'id': visit.id,
+            'visit_number': visit.visit_number,
+            'queue_number': visit.queue_number,
+            'patient': {
+                'id': visit.patient.id,
+                'patient_number': visit.patient.patient_number,
+                'full_name': visit.patient.full_name,
+                'age': visit.patient.age,
+                'gender': visit.patient.get_gender_display(),
+                'phone': visit.patient.phone_number,
+            },
+            'visit_type': visit.get_visit_type_display(),
+            'priority_level': visit.priority_level,
+            'priority_display': _get_priority_display(visit.priority_level),
+            'status': visit.status,
+            'status_display': visit.get_status_display(),
+            'chief_complaint': visit.chief_complaint,
+            'arrival_time': visit.arrival_time.strftime('%H:%M'),
+            'wait_time_minutes': visit.wait_time_minutes,
+            'triage': {
+                'done': triage is not None,
+                'emergency_level': triage.emergency_level if triage else None,
+                'temperature': str(triage.temperature) if triage else None,
+                'bp': f"{triage.systolic_bp}/{triage.diastolic_bp}" if triage else None,
+            } if triage else None,
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'data': queue_data,
+        'count': len(queue_data),
+        'timestamp': timezone.now().isoformat(),
+    })
+
+
+def _get_priority_display(level):
+    """Get priority level display text and color"""
+    priority_map = {
+        1: {'text': 'Critical', 'color': 'danger', 'icon': 'exclamation-triangle-fill'},
+        2: {'text': 'Emergency', 'color': 'danger', 'icon': 'exclamation-circle-fill'},
+        3: {'text': 'Urgent', 'color': 'warning', 'icon': 'exclamation-circle'},
+        4: {'text': 'Normal', 'color': 'info', 'icon': 'info-circle'},
+        5: {'text': 'Low', 'color': 'secondary', 'icon': 'circle'},
+    }
+    return priority_map.get(level, priority_map[4])
+
+
+# =============================================================================
+# AJAX API - UPDATE VISIT STATUS
+# =============================================================================
+
+@login_required
+@require_POST
+def api_update_visit_status(request):
+    """Update patient visit status"""
+    try:
+        data = json.loads(request.body)
+        visit_id = data.get('visit_id')
+        new_status = data.get('status')
+        notes = data.get('notes', '')
+        
+        if not visit_id or not new_status:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing required fields'
+            }, status=400)
+        
+        visit = get_object_or_404(PatientVisit, id=visit_id)
+        
+        # Update status
+        old_status = visit.status
+        visit.status = new_status
+        
+        # Add notes if status is being completed or cancelled
+        if new_status in ['COMPLETED', 'CANCELLED']:
+            visit.exit_time = timezone.now()
+            visit.exit_notes = notes
+        
+        visit.save()
+        
+        # Create notification for relevant staff
+        _send_status_change_notification(visit, old_status, new_status)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Status updated to {visit.get_status_display()}',
+            'data': {
+                'visit_id': visit.id,
+                'status': visit.status,
+                'status_display': visit.get_status_display(),
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+def _send_status_change_notification(visit, old_status, new_status):
+    """Send notification when visit status changes"""
+    # Notify relevant departments
+    notification_map = {
+        'TRIAGE': 'NURSE',
+        'CONSULTATION': 'DOCTOR',
+        'LABORATORY': 'LAB_TECHNICIAN',
+        'RADIOLOGY': 'RADIOLOGIST',
+        'PHARMACY': 'PHARMACIST',
+        'BILLING': 'CASHIER',
+    }
+    
+    if new_status in notification_map:
+        role_name = notification_map[new_status]
+        staff_members = User.objects.filter(
+            role__name=role_name,
+            is_active_staff=True
+        )
+        
+        for staff in staff_members:
+            Notification.objects.create(
+                recipient=staff,
+                notification_type='GENERAL',
+                title='New Patient in Queue',
+                message=f'Patient {visit.patient.full_name} ({visit.visit_number}) is now in {visit.get_status_display()}',
+                link_url=f'/queue/{visit.id}/'
+            )
+
+
+# =============================================================================
+# AJAX API - UPDATE PRIORITY
+# =============================================================================
+
+@login_required
+@require_POST
+def api_update_priority(request):
+    """Update patient visit priority level"""
+    try:
+        data = json.loads(request.body)
+        visit_id = data.get('visit_id')
+        priority_level = data.get('priority_level')
+        reason = data.get('reason', '')
+        
+        if not visit_id or priority_level is None:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing required fields'
+            }, status=400)
+        
+        visit = get_object_or_404(PatientVisit, id=visit_id)
+        
+        old_priority = visit.priority_level
+        visit.priority_level = int(priority_level)
+        visit.save()
+        
+        # Log the change
+        if reason:
+            visit.chief_complaint += f"\n[Priority changed: {reason}]"
+            visit.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Priority updated successfully',
+            'data': {
+                'visit_id': visit.id,
+                'priority_level': visit.priority_level,
+                'priority_display': _get_priority_display(visit.priority_level),
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# =============================================================================
+# AJAX API - ASSIGN TO DOCTOR
+# =============================================================================
+
+@login_required
+@require_POST
+def api_assign_doctor(request):
+    """Assign patient to a specific doctor"""
+    try:
+        data = json.loads(request.body)
+        visit_id = data.get('visit_id')
+        doctor_id = data.get('doctor_id')
+        
+        if not visit_id or not doctor_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing required fields'
+            }, status=400)
+        
+        visit = get_object_or_404(PatientVisit, id=visit_id)
+        doctor = get_object_or_404(User, id=doctor_id)
+        
+        # Update visit status
+        visit.status = 'CONSULTATION'
+        visit.save()
+        
+        # Send notification to doctor
+        Notification.objects.create(
+            recipient=doctor,
+            notification_type='GENERAL',
+            title='New Patient Assigned',
+            message=f'Patient {visit.patient.full_name} ({visit.visit_number}) has been assigned to you',
+            link_url=f'/consultations/{visit.id}/'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Patient assigned to Dr. {doctor.last_name}',
+            'data': {
+                'visit_id': visit.id,
+                'doctor_name': doctor.get_full_name(),
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# =============================================================================
+# AJAX API - CALL NEXT PATIENT
+# =============================================================================
+
+@login_required
+@require_POST
+def api_call_next_patient(request):
+    """Call the next patient in queue"""
+    try:
+        data = json.loads(request.body)
+        department = data.get('department', 'TRIAGE')
+        
+        today = timezone.now().date()
+        
+        # Get next waiting patient
+        next_patient = PatientVisit.objects.filter(
+            visit_date=today,
+            status='WAITING'
+        ).order_by('priority_level', 'queue_number').first()
+        
+        if not next_patient:
+            return JsonResponse({
+                'success': False,
+                'message': 'No patients in waiting queue'
+            })
+        
+        # Update status based on department
+        status_map = {
+            'TRIAGE': 'TRIAGE',
+            'CONSULTATION': 'CONSULTATION',
+            'LABORATORY': 'LABORATORY',
+            'RADIOLOGY': 'RADIOLOGY',
+            'PHARMACY': 'PHARMACY',
+            'BILLING': 'BILLING',
+        }
+        
+        next_patient.status = status_map.get(department, 'TRIAGE')
+        next_patient.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Called patient: {next_patient.patient.full_name}',
+            'data': {
+                'visit_id': next_patient.id,
+                'visit_number': next_patient.visit_number,
+                'queue_number': next_patient.queue_number,
+                'patient_name': next_patient.patient.full_name,
+                'patient_number': next_patient.patient.patient_number,
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# =============================================================================
+# AJAX API - GET VISIT DETAILS
+# =============================================================================
+
+@login_required
+@require_http_methods(["GET"])
+def api_get_visit_details(request, visit_id):
+    """Get detailed information about a specific visit"""
+    try:
+        visit = get_object_or_404(
+            PatientVisit.objects.select_related('patient', 'triage'),
+            id=visit_id
+        )
+        
+        patient = visit.patient
+        triage = getattr(visit, 'triage', None)
+        
+        # Get recent consultations
+        recent_consultations = visit.consultations.select_related('doctor').order_by('-consultation_start')[:5]
+        
+        # Get pending orders
+        lab_orders = visit.lab_orders.filter(status__in=['ORDERED', 'RECEIVED', 'IN_PROGRESS']).count()
+        rad_orders = visit.radiology_orders.filter(status__in=['ORDERED', 'SCHEDULED', 'IN_PROGRESS']).count()
+        prescriptions = visit.prescriptions.filter(status__in=['PENDING', 'PARTIALLY_DISPENSED']).count()
+        
+        data = {
+            'visit': {
+                'id': visit.id,
+                'visit_number': visit.visit_number,
+                'visit_type': visit.get_visit_type_display(),
+                'queue_number': visit.queue_number,
+                'priority_level': visit.priority_level,
+                'status': visit.status,
+                'status_display': visit.get_status_display(),
+                'chief_complaint': visit.chief_complaint,
+                'arrival_time': visit.arrival_time.strftime('%Y-%m-%d %H:%M'),
+                'wait_time_minutes': visit.wait_time_minutes,
+            },
+            'patient': {
+                'id': patient.id,
+                'patient_number': patient.patient_number,
+                'full_name': patient.full_name,
+                'age': patient.age,
+                'gender': patient.get_gender_display(),
+                'phone': patient.phone_number,
+                'blood_group': patient.blood_group,
+                'allergies': patient.allergies,
+                'chronic_conditions': patient.chronic_conditions,
+                'nhif_status': patient.get_nhif_status_display(),
+                'nhif_number': patient.nhif_number,
+            },
+            'triage': {
+                'done': triage is not None,
+                'emergency_level': triage.get_emergency_level_display() if triage else None,
+                'temperature': str(triage.temperature) if triage else None,
+                'pulse': triage.pulse if triage else None,
+                'bp': f"{triage.systolic_bp}/{triage.diastolic_bp}" if triage else None,
+                'respiratory_rate': triage.respiratory_rate if triage else None,
+                'oxygen_saturation': triage.oxygen_saturation if triage else None,
+                'pain_scale': triage.pain_scale if triage else None,
+            } if triage else None,
+            'consultations': [
+                {
+                    'id': cons.id,
+                    'doctor': cons.doctor.get_full_name(),
+                    'date': cons.consultation_start.strftime('%Y-%m-%d %H:%M'),
+                    'diagnosis': cons.final_diagnosis[:100] + '...' if len(cons.final_diagnosis) > 100 else cons.final_diagnosis,
+                }
+                for cons in recent_consultations
+            ],
+            'pending_orders': {
+                'laboratory': lab_orders,
+                'radiology': rad_orders,
+                'prescriptions': prescriptions,
+            }
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# =============================================================================
+# AJAX API - GET QUEUE STATISTICS
+# =============================================================================
+
+@login_required
+@require_http_methods(["GET"])
+def api_get_queue_stats(request):
+    """Get real-time queue statistics"""
+    try:
+        today = timezone.now().date()
+        
+        # Get all visits for today
+        all_visits = PatientVisit.objects.filter(visit_date=today)
+        active_visits = all_visits.filter(
+            status__in=['WAITING', 'TRIAGE', 'CONSULTATION', 'LABORATORY', 
+                        'RADIOLOGY', 'PHARMACY', 'BILLING']
+        )
+        
+        # Calculate statistics
+        stats = {
+            'total_today': all_visits.count(),
+            'active_patients': active_visits.count(),
+            'completed': all_visits.filter(status='COMPLETED').count(),
+            'by_status': {
+                'waiting': active_visits.filter(status='WAITING').count(),
+                'triage': active_visits.filter(status='TRIAGE').count(),
+                'consultation': active_visits.filter(status='CONSULTATION').count(),
+                'laboratory': active_visits.filter(status='LABORATORY').count(),
+                'radiology': active_visits.filter(status='RADIOLOGY').count(),
+                'pharmacy': active_visits.filter(status='PHARMACY').count(),
+                'billing': active_visits.filter(status='BILLING').count(),
+            },
+            'by_priority': {
+                'critical': active_visits.filter(priority_level=1).count(),
+                'emergency': active_visits.filter(priority_level=2).count(),
+                'urgent': active_visits.filter(priority_level=3).count(),
+                'normal': active_visits.filter(priority_level=4).count(),
+                'low': active_visits.filter(priority_level=5).count(),
+            },
+            'by_visit_type': {
+                'outpatient': all_visits.filter(visit_type='OUTPATIENT').count(),
+                'emergency': all_visits.filter(visit_type='EMERGENCY').count(),
+                'referral': all_visits.filter(visit_type='REFERRAL').count(),
+            },
+            'average_wait_time': _calculate_average_wait_time(active_visits),
+        }
+        
+        return JsonResponse({
+            'success': True,
+            'data': stats,
+            'timestamp': timezone.now().isoformat(),
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+# =============================================================================
+# AJAX API - SEARCH PATIENTS IN QUEUE
+# =============================================================================
+
+@login_required
+@require_http_methods(["GET"])
+def api_search_queue(request):
+    """Search for patients in today's queue"""
+    try:
+        query = request.GET.get('q', '').strip()
+        
+        if len(query) < 2:
+            return JsonResponse({
+                'success': False,
+                'error': 'Search query must be at least 2 characters'
+            }, status=400)
+        
+        today = timezone.now().date()
+        
+        visits = PatientVisit.objects.filter(
+            visit_date=today,
+            status__in=['WAITING', 'TRIAGE', 'CONSULTATION', 'LABORATORY', 
+                        'RADIOLOGY', 'PHARMACY', 'BILLING']
+        ).filter(
+            Q(visit_number__icontains=query) |
+            Q(patient__patient_number__icontains=query) |
+            Q(patient__first_name__icontains=query) |
+            Q(patient__last_name__icontains=query) |
+            Q(patient__phone_number__icontains=query) |
+            Q(patient__id_number__icontains=query)
+        ).select_related('patient', 'triage')[:20]
+        
+        results = [
+            {
+                'visit_id': visit.id,
+                'visit_number': visit.visit_number,
+                'queue_number': visit.queue_number,
+                'patient_number': visit.patient.patient_number,
+                'patient_name': visit.patient.full_name,
+                'status': visit.get_status_display(),
+                'priority': _get_priority_display(visit.priority_level),
+            }
+            for visit in visits
+        ]
+        
+        return JsonResponse({
+            'success': True,
+            'data': results,
+            'count': len(results)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
 
 
 @login_required

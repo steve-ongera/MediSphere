@@ -1,0 +1,375 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Appointment Details - {{ appointment.appointment_number }}{% endblock %}
+
+{% block content %}
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-calendar-event me-2"></i>Appointment Details</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_view_appointments' %}">Appointments</a></li>
+            <li class="breadcrumb-item active">{{ appointment.appointment_number }}</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row">
+        <!-- Main Details -->
+        <div class="col-lg-8">
+            <!-- Appointment Header -->
+            <div class="card bg-gradient-primary text-white mb-3">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="mb-1">{{ appointment.appointment_number }}</h3>
+                            <p class="mb-0">
+                                <i class="bi bi-calendar3 me-2"></i>{{ appointment.appointment_datetime|date:"l, F d, Y" }}
+                                <span class="mx-2">|</span>
+                                <i class="bi bi-clock me-2"></i>{{ appointment.appointment_datetime|date:"h:i A" }}
+                            </p>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge bg-white text-primary fs-6 px-3 py-2">
+                                {{ appointment.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patient Information -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-circle me-2 text-primary"></i>Patient Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Full Name</label>
+                            <div class="fw-semibold">{{ appointment.patient.full_name }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Patient Number</label>
+                            <div class="fw-semibold">
+                                <a href="{% url 'receptionist_patient_detail' appointment.patient.patient_number %}">
+                                    {{ appointment.patient.patient_number }}
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="text-muted small">Age</label>
+                            <div>{{ appointment.patient.age }} years</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="text-muted small">Gender</label>
+                            <div>{{ appointment.patient.get_gender_display }}</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="text-muted small">Phone Number</label>
+                            <div>{{ appointment.patient.phone_number }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Doctor Information -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-badge me-2 text-success"></i>Doctor Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Doctor Name</label>
+                            <div class="fw-semibold">Dr. {{ appointment.doctor.get_full_name }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Specialization</label>
+                            <div>{{ appointment.doctor.role.get_name_display }}</div>
+                        </div>
+                        {% if appointment.doctor.department %}
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Department</label>
+                            <div>{{ appointment.doctor.department.get_name_display }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Appointment Details -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2 text-info"></i>Appointment Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Appointment Type</label>
+                            <div><span class="badge bg-primary">{{ appointment.appointment_type }}</span></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Duration</label>
+                            <div>{{ appointment.duration_minutes }} minutes</div>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="text-muted small">Reason for Visit</label>
+                            <div class="p-3 bg-light rounded">{{ appointment.reason }}</div>
+                        </div>
+                        {% if appointment.notes %}
+                        <div class="col-12 mb-3">
+                            <label class="text-muted small">Additional Notes</label>
+                            <div class="p-3 bg-light rounded">{{ appointment.notes }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- SMS Reminder Status -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-bell me-2 text-warning"></i>Reminder Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if appointment.sms_reminder_sent %}
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle me-2"></i>
+                        SMS reminder sent on {{ appointment.sms_reminder_sent_at|date:"M d, Y at h:i A" }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-clock me-2"></i>
+                        SMS reminder will be sent 24 hours before the appointment
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Sidebar -->
+        <div class="col-lg-4">
+            <!-- Quick Actions -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightning me-2 text-warning"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if appointment.status == 'SCHEDULED' or appointment.status == 'CONFIRMED' %}
+                        <button class="btn btn-success" onclick="updateStatus('CONFIRMED')">
+                            <i class="bi bi-check-circle me-2"></i>Confirm Appointment
+                        </button>
+                        <a href="{% url 'receptionist_check_in_patient' appointment.id %}" class="btn btn-info">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Check In Patient
+                        </a>
+                        <a href="{% url 'receptionist_cancel_appointment' appointment.id %}" class="btn btn-danger">
+                            <i class="bi bi-x-circle me-2"></i>Cancel Appointment
+                        </a>
+                        {% elif appointment.status == 'ARRIVED' %}
+                        <button class="btn btn-primary" onclick="updateStatus('IN_PROGRESS')">
+                            <i class="bi bi-play-circle me-2"></i>Start Consultation
+                        </button>
+                        {% elif appointment.status == 'IN_PROGRESS' %}
+                        <button class="btn btn-success" onclick="updateStatus('COMPLETED')">
+                            <i class="bi bi-check-circle-fill me-2"></i>Mark as Completed
+                        </button>
+                        {% endif %}
+                        
+                        {% if appointment.status != 'CANCELLED' and appointment.status != 'COMPLETED' %}
+                        <button class="btn btn-warning" onclick="updateStatus('NO_SHOW')">
+                            <i class="bi bi-person-x me-2"></i>Mark as No Show
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2 text-secondary"></i>Timeline
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-primary"></div>
+                            <div class="timeline-content">
+                                <small class="text-muted">{{ appointment.created_at|date:"M d, Y h:i A" }}</small>
+                                <p class="mb-0">Appointment created</p>
+                            </div>
+                        </div>
+                        
+                        {% if appointment.status == 'CONFIRMED' or appointment.status == 'ARRIVED' or appointment.status == 'IN_PROGRESS' or appointment.status == 'COMPLETED' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-success"></div>
+                            <div class="timeline-content">
+                                <small class="text-muted">{{ appointment.updated_at|date:"M d, Y h:i A" }}</small>
+                                <p class="mb-0">Appointment confirmed</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if appointment.sms_reminder_sent %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-warning"></div>
+                            <div class="timeline-content">
+                                <small class="text-muted">{{ appointment.sms_reminder_sent_at|date:"M d, Y h:i A" }}</small>
+                                <p class="mb-0">SMS reminder sent</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if appointment.status == 'ARRIVED' or appointment.status == 'IN_PROGRESS' or appointment.status == 'COMPLETED' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-info"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0">Patient arrived</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if appointment.status == 'COMPLETED' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-secondary"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0">Appointment completed</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if appointment.status == 'CANCELLED' %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker bg-danger"></div>
+                            <div class="timeline-content">
+                                <p class="mb-0">Appointment cancelled</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e0e0e0;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -26px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #e0e0e0;
+}
+
+.timeline-content {
+    padding-left: 10px;
+}
+</style>
+
+<script>
+function updateStatus(status) {
+    if (!confirm(`Are you sure you want to update the status to ${status}?`)) return;
+    
+    fetch(`/receptionist/appointments/{{ appointment.id }}/update-status/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `status=${status}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating status', 'danger');
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function showToast(message, type = 'info') {
+    const alertClass = {
+        'success': 'alert-success',
+        'danger': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    }[type];
+    
+    const toast = document.createElement('div');
+    toast.className = `alert ${alertClass} position-fixed top-0 end-0 m-3`;
+    toast.style.zIndex = '9999';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.remove(), 3000);
+}
+</script>
+{% endblock %}
