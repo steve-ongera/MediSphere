@@ -3409,17 +3409,21 @@ def receptionist_patient_detail_view(request, patient_number):
 
 
 @login_required
-def receptionist_edit_patient_view(request, patient_id):
+def receptionist_edit_patient_view(request, patient_number):
     """Edit patient information"""
     
-    patient = get_object_or_404(Patient, id=patient_id)
+    """
+    Update patient information
+    """
+    patient = get_object_or_404(Patient, patient_number=patient_number, is_active=True)
     
     if request.method == 'POST':
         form = PatientRegistrationForm(request.POST, instance=patient)
+        
         if form.is_valid():
-            form.save()
+            patient = form.save()
             messages.success(request, f'Patient {patient.full_name} updated successfully!')
-            return redirect('receptionist_patient_detail', patient_id=patient.id)
+            return redirect('patients-detail', patient_number=patient.patient_number)
         else:
             messages.error(request, 'Please correct the errors below.')
     else:
@@ -3428,7 +3432,7 @@ def receptionist_edit_patient_view(request, patient_id):
     context = {
         'form': form,
         'patient': patient,
-        'title': f'Edit Patient: {patient.full_name}'
+        'page_title': f'Edit Patient: {patient.full_name}',
     }
     
     return render(request, 'receptionist/edit_patient.html', context)

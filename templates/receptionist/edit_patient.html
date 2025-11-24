@@ -1,0 +1,406 @@
+{% extends 'base/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}Edit Patient - {{ patient.full_name }}{% endblock %}
+
+{% block content %}
+<!-- Page Title -->
+<div class="pagetitle">
+    <h1><i class="bi bi-person-gear me-2"></i>Edit Patient Information</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_dashboard' %}"><i class="bi bi-house-door"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_patient_records' %}">Patients</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_patient_detail' patient.patient_number %}">{{ patient.patient_number }}</a></li>
+            <li class="breadcrumb-item active">Edit</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <!-- Patient Info Header -->
+            <div class="card bg-light mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="avatar avatar-lg bg-gradient-primary rounded-circle d-flex align-items-center justify-content-center me-3">
+                            <i class="bi bi-person text-white" style="font-size: 2rem;"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">{{ patient.full_name }}</h5>
+                            <p class="text-muted mb-0">{{ patient.patient_number }} | {{ patient.get_gender_display }} | {{ patient.age }} years</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Form -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="bi bi-pencil-square me-2"></i>Update Patient Details
+                    </h5>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" id="patientUpdateForm">
+                        {% csrf_token %}
+                        
+                        <!-- Personal Information Section -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-person-circle me-2 text-primary"></i>Personal Information
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                                        First Name <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.first_name class="form-control" %}
+                                    {% if form.first_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.first_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.middle_name.id_for_label }}" class="form-label">
+                                        Middle Name
+                                    </label>
+                                    {% render_field form.middle_name class="form-control" %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                                        Last Name <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.last_name class="form-control" %}
+                                    {% if form.last_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.last_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-4">
+                                    <label for="{{ form.date_of_birth.id_for_label }}" class="form-label">
+                                        Date of Birth <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.date_of_birth class="form-control" type="date" %}
+                                    {% if form.date_of_birth.errors %}
+                                    <div class="text-danger small mt-1">{{ form.date_of_birth.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.gender.id_for_label }}" class="form-label">
+                                        Gender <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.gender class="form-select" %}
+                                    {% if form.gender.errors %}
+                                    <div class="text-danger small mt-1">{{ form.gender.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="{{ form.id_number.id_for_label }}" class="form-label">
+                                        ID Number
+                                    </label>
+                                    {% render_field form.id_number class="form-control" %}
+                                    {% if form.id_number.errors %}
+                                    <div class="text-danger small mt-1">{{ form.id_number.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information Section -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-telephone me-2 text-success"></i>Contact Information
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.phone_number.id_for_label }}" class="form-label">
+                                        Phone Number <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-phone"></i></span>
+                                        {% render_field form.phone_number class="form-control" %}
+                                    </div>
+                                    {% if form.phone_number.errors %}
+                                    <div class="text-danger small mt-1">{{ form.phone_number.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.alternate_phone.id_for_label }}" class="form-label">
+                                        Alternate Phone
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-phone"></i></span>
+                                        {% render_field form.alternate_phone class="form-control" %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-12">
+                                    <label for="{{ form.email.id_for_label }}" class="form-label">
+                                        Email Address
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                        {% render_field form.email class="form-control" %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Address Information Section -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-geo-alt me-2 text-info"></i>Address Information
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.county.id_for_label }}" class="form-label">
+                                        County <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.county class="form-control" %}
+                                    {% if form.county.errors %}
+                                    <div class="text-danger small mt-1">{{ form.county.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.sub_county.id_for_label }}" class="form-label">
+                                        Sub-County
+                                    </label>
+                                    {% render_field form.sub_county class="form-control" %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6">
+                                    <label for="{{ form.ward.id_for_label }}" class="form-label">
+                                        Ward
+                                    </label>
+                                    {% render_field form.ward class="form-control" %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.village.id_for_label }}" class="form-label">
+                                        Village
+                                    </label>
+                                    {% render_field form.village class="form-control" %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-12">
+                                    <label for="{{ form.postal_address.id_for_label }}" class="form-label">
+                                        Postal Address
+                                    </label>
+                                    {% render_field form.postal_address class="form-control" %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Next of Kin Section -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-person-badge me-2 text-warning"></i>Next of Kin Information
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.next_of_kin_name.id_for_label }}" class="form-label">
+                                        Full Name <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.next_of_kin_name class="form-control" %}
+                                    {% if form.next_of_kin_name.errors %}
+                                    <div class="text-danger small mt-1">{{ form.next_of_kin_name.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.next_of_kin_relationship.id_for_label }}" class="form-label">
+                                        Relationship <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.next_of_kin_relationship class="form-control" %}
+                                    {% if form.next_of_kin_relationship.errors %}
+                                    <div class="text-danger small mt-1">{{ form.next_of_kin_relationship.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6">
+                                    <label for="{{ form.next_of_kin_phone.id_for_label }}" class="form-label">
+                                        Phone Number <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-phone"></i></span>
+                                        {% render_field form.next_of_kin_phone class="form-control" %}
+                                    </div>
+                                    {% if form.next_of_kin_phone.errors %}
+                                    <div class="text-danger small mt-1">{{ form.next_of_kin_phone.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.next_of_kin_address.id_for_label }}" class="form-label">
+                                        Address
+                                    </label>
+                                    {% render_field form.next_of_kin_address class="form-control" rows="1" %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Medical Information Section -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-heart-pulse me-2 text-danger"></i>Medical Information
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.blood_group.id_for_label }}" class="form-label">
+                                        Blood Group
+                                    </label>
+                                    {% render_field form.blood_group class="form-select" %}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="{{ form.allergies.id_for_label }}" class="form-label">
+                                        Known Allergies
+                                    </label>
+                                    {% render_field form.allergies class="form-control" rows="2" %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-12">
+                                    <label for="{{ form.chronic_conditions.id_for_label }}" class="form-label">
+                                        Chronic Conditions
+                                    </label>
+                                    {% render_field form.chronic_conditions class="form-control" rows="2" %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- NHIF Information Section -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-shield-check me-2 text-primary"></i>NHIF Information
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="{{ form.nhif_status.id_for_label }}" class="form-label">
+                                        NHIF Status <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_field form.nhif_status class="form-select" id="nhifStatus" %}
+                                    {% if form.nhif_status.errors %}
+                                    <div class="text-danger small mt-1">{{ form.nhif_status.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6" id="nhifNumberField">
+                                    <label for="{{ form.nhif_number.id_for_label }}" class="form-label">
+                                        NHIF Number
+                                    </label>
+                                    {% render_field form.nhif_number class="form-control" %}
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3 mt-2" id="nhifPrincipalField">
+                                <div class="col-md-12">
+                                    <label for="{{ form.nhif_principal_name.id_for_label }}" class="form-label">
+                                        Principal Member Name
+                                        <small class="text-muted">(For dependents only)</small>
+                                    </label>
+                                    {% render_field form.nhif_principal_name class="form-control" %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes Section -->
+                        <div class="mb-4">
+                            <h5 class="border-bottom pb-2 mb-3">
+                                <i class="bi bi-sticky me-2 text-secondary"></i>Additional Notes
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                        Notes
+                                    </label>
+                                    {% render_field form.notes class="form-control" rows="3" %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                            <a href="{% url 'receptionist_patient_detail' patient.patient_number %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .avatar-lg {
+        width: 64px;
+        height: 64px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // NHIF Status handling
+    const nhifStatus = document.getElementById('nhifStatus');
+    const nhifNumberField = document.getElementById('nhifNumberField');
+    const nhifPrincipalField = document.getElementById('nhifPrincipalField');
+    
+    function toggleNHIFFields() {
+        const status = nhifStatus.value;
+        if (status === 'ACTIVE' || status === 'INACTIVE' || status === 'CIVIL_SERVANT') {
+            nhifNumberField.style.display = 'block';
+        } else {
+            nhifNumberField.style.display = 'none';
+        }
+    }
+    
+    nhifStatus.addEventListener('change', toggleNHIFFields);
+    toggleNHIFFields(); // Initial call
+    
+    // Form validation
+    const form = document.getElementById('patientUpdateForm');
+    form.addEventListener('submit', function(e) {
+        const requiredFields = form.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please fill in all required fields marked with *');
+            window.scrollTo(0, 0);
+        }
+    });
+    
+    // Remove invalid class on input
+    document.querySelectorAll('.form-control, .form-select').forEach(field => {
+        field.addEventListener('input', function() {
+            this.classList.remove('is-invalid');
+        });
+    });
+});
+</script>
+{% endblock %}
