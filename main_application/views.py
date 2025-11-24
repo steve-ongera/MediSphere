@@ -3362,31 +3362,47 @@ def receptionist_search_patient_view(request):
 
 
 @login_required
-def receptionist_patient_detail_view(request, patient_id):
-    """View detailed patient information"""
+def receptionist_patient_detail_view(request, patient_number):
+    """
+    View detailed patient information using patient number
+    """
+    patient = get_object_or_404(
+        Patient.objects.select_related('registered_by'),
+        patient_number=patient_number,
+        is_active=True
+    )
     
-    patient = get_object_or_404(Patient, id=patient_id)
+    # Get patient's recent visits
+    recent_visits = patient.visits.all().order_by('-visit_date')[:10]
     
-    # Get patient's visit history
-    visits = patient.visits.all().order_by('-visit_date')[:10]
-    
-    # Get upcoming appointments
-    upcoming_appointments = patient.appointments.filter(
-        appointment_datetime__gte=timezone.now(),
-        status__in=['SCHEDULED', 'CONFIRMED']
-    ).order_by('appointment_datetime')[:5]
-    
-    # Get recent visits
-    recent_visits = patient.visits.filter(
-        visit_date__gte=timezone.now().date() - timedelta(days=90)
+    # Get patient's prescriptions
+    recent_prescriptions = patient.visits.filter(
+        prescriptions__isnull=False
     ).order_by('-visit_date')[:5]
+    
+    # Get patient's invoices
+    recent_invoices = patient.invoices.all().order_by('-invoice_date')[:10]
+    
+    # Get patient's admissions
+    admissions = patient.admissions.all().order_by('-admission_datetime')[:5]
+    
+    # Calculate statistics
+    total_visits = patient.visits.count()
+    total_amount_billed = sum(invoice.total_amount for invoice in patient.invoices.all())
+    total_amount_paid = sum(invoice.amount_paid for invoice in patient.invoices.all())
+    outstanding_balance = sum(invoice.balance for invoice in patient.invoices.all())
     
     context = {
         'patient': patient,
-        'visits': visits,
-        'upcoming_appointments': upcoming_appointments,
         'recent_visits': recent_visits,
-        'title': f'Patient: {patient.full_name}'
+        'recent_prescriptions': recent_prescriptions,
+        'recent_invoices': recent_invoices,
+        'admissions': admissions,
+        'total_visits': total_visits,
+        'total_amount_billed': total_amount_billed,
+        'total_amount_paid': total_amount_paid,
+        'outstanding_balance': outstanding_balance,
+        'page_title': f'Patient: {patient.full_name}',
     }
     
     return render(request, 'receptionist/patient_detail.html', context)
