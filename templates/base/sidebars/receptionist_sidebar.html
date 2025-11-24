@@ -10,7 +10,7 @@
     <ul class="sidebar-nav" id="sidebar-nav">
         <!-- Dashboard -->
         <li class="nav-item">
-            <a class="nav-link" href="#" style="border-left: 3px solid #1a76d1;">
+            <a class="nav-link" href="{% url 'receptionist_dashboard'%}" style="border-left: 3px solid #1a76d1;">
                 <i class="bi bi-speedometer2" style="color: #1a76d1;"></i>
                 <span>Dashboard</span>
             </a>
@@ -24,9 +24,9 @@
                 <i class="bi bi-chevron-down ms-auto"></i>
             </a>
             <ul id="patient-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
-                <li><a href="#"><i class="bi bi-person-plus"></i> Register New Patient</a></li>
-                <li><a href="#"><i class="bi bi-card-checklist"></i> Patient Records</a></li>
-                <li><a href="#"><i class="bi bi-search"></i> Search Patient</a></li>
+                <li><a href="{% url 'receptionist_register_patient'%}"><i class="bi bi-person-plus"></i> Register New Patient</a></li>
+                <li><a href="{% url 'receptionist_patient_records'%}"><i class="bi bi-card-checklist"></i> Patient Records</a></li>
+                <li><a href="{% url 'receptionist_search_patient'%}"><i class="bi bi-search"></i> Search Patient</a></li>
             </ul>
         </li>
 
@@ -46,14 +46,14 @@
                 <i class="bi bi-chevron-down ms-auto"></i>
             </a>
             <ul id="appointment-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
-                <li><a href="#"><i class="bi bi-plus-circle"></i> Schedule Appointment</a></li>
-                <li><a href="#"><i class="bi bi-calendar3"></i> View Appointments</a></li>
+                <li><a href="{% url 'receptionist_schedule_appointment'%}"><i class="bi bi-plus-circle"></i> Schedule Appointment</a></li>
+                <li><a href="{% url 'receptionist_view_appointments'%}"><i class="bi bi-calendar3"></i> View Appointments</a></li>
             </ul>
         </li>
 
         <!-- Logout -->
         <li class="nav-item">
-            <a class="nav-link collapsed" href="#">
+            <a class="nav-link collapsed" href="{% url 'logout'%}">
                 <i class="bi bi-box-arrow-right"></i>
                 <span>Logout</span>
             </a>
@@ -61,71 +61,3 @@
     </ul>
 </aside>
 
-<!-- ======= NURSE SIDEBAR ======= -->
-<aside id="sidebar-nurse" class="sidebar">
-    <div class="sidebar-brand text-center py-3 bg-white">
-        <img src="{% static 'assets/img/mediclinic-logo.png' %}" alt="Hospital Logo" style="height: 40px;">
-        <h6 class="mt-2 text-uppercase" style="color: #1a76d1; font-weight: 600;">NURSING PORTAL</h6>
-    </div>
-
-    <ul class="sidebar-nav" id="sidebar-nav">
-        <!-- Dashboard -->
-        <li class="nav-item">
-            <a class="nav-link" href="#" style="border-left: 3px solid #1a76d1;">
-                <i class="bi bi-speedometer2" style="color: #1a76d1;"></i>
-                <span>Dashboard</span>
-            </a>
-        </li>
-
-        <!-- Triage -->
-        <li class="nav-item">
-            <a class="nav-link collapsed" data-bs-target="#triage-nav" data-bs-toggle="collapse" href="#">
-                <i class="bi bi-heart-pulse" style="color: #1a76d1;"></i>
-                <span>Triage & Vitals</span>
-                <i class="bi bi-chevron-down ms-auto"></i>
-            </a>
-            <ul id="triage-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
-                <li><a href="#"><i class="bi bi-thermometer"></i> Record Vitals</a></li>
-                <li><a href="#"><i class="bi bi-clipboard-pulse"></i> Triage Assessment</a></li>
-            </ul>
-        </li>
-
-        <!-- Patient Queue -->
-        <li class="nav-item">
-            <a class="nav-link collapsed" href="#">
-                <i class="bi bi-people" style="color: #1a76d1;"></i>
-                <span>Patient Queue</span>
-            </a>
-        </li>
-
-        <!-- Inpatient Care -->
-        <li class="nav-item">
-            <a class="nav-link collapsed" data-bs-target="#inpatient-nav" data-bs-toggle="collapse" href="#">
-                <i class="bi bi-hospital" style="color: #1a76d1;"></i>
-                <span>Inpatient Care</span>
-                <i class="bi bi-chevron-down ms-auto"></i>
-            </a>
-            <ul id="inpatient-nav" class="nav-content collapse" data-bs-parent="#sidebar-nav">
-                <li><a href="#"><i class="bi bi-bed"></i> Ward Patients</a></li>
-                <li><a href="#"><i class="bi bi-clipboard2-plus"></i> Nursing Notes</a></li>
-                <li><a href="#"><i class="bi bi-capsule"></i> Medication Records</a></li>
-            </ul>
-        </li>
-
-        <!-- Notifications -->
-        <li class="nav-item">
-            <a class="nav-link collapsed" href="#">
-                <i class="bi bi-bell" style="color: #1a76d1;"></i>
-                <span>Notifications</span>
-            </a>
-        </li>
-
-        <!-- Logout -->
-        <li class="nav-item">
-            <a class="nav-link collapsed" href="#">
-                <i class="bi bi-box-arrow-right"></i>
-                <span>Logout</span>
-            </a>
-        </li>
-    </ul>
-</aside>

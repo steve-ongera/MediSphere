@@ -85,9 +85,9 @@ urlpatterns = [
     
     path('dashboard/receptionist/', views.receptionist_dashboard_view, name='receptionist_dashboard'),
     
-    path('patients/register/',  views.receptionist_register_patient_view,  name='receptionist_register_patient'),
-    path('patients/records/', views.receptionist_patient_records_view,  name='receptionist_patient_records'),
-    path('patients/search/',  views.receptionist_search_patient_view,  name='receptionist_search_patient'),
+    path('patients-register/',  views.receptionist_register_patient_view,  name='receptionist_register_patient'),
+    path('patients-records/', views.receptionist_patient_records_view,  name='receptionist_patient_records'),
+    path('patients-search/',  views.receptionist_search_patient_view,  name='receptionist_search_patient'),
     path('patients/<int:patient_id>/', views.receptionist_patient_detail_view,  name='receptionist_patient_detail'),
     path('patients/<int:patient_id>/edit/', views.receptionist_edit_patient_view, name='receptionist_edit_patient'),
     path('queue/', views.receptionist_queue_management_view, name='receptionist_queue_management'),

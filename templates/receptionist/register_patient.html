@@ -8,7 +8,7 @@
     <h1><i class="bi bi-person-plus"></i> Register New Patient</h1>
     <nav>
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'receptionist:receptionist_dashboard' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'receptionist_dashboard' %}">Home</a></li>
             <li class="breadcrumb-item">Patient Management</li>
             <li class="breadcrumb-item active">Register New Patient</li>
         </ol>
@@ -210,7 +210,7 @@
                             <button type="submit" name="save_and_visit" class="btn btn-success">
                                 <i class="bi bi-save"></i> Register & Create Visit
                             </button>
-                            <a href="{% url 'receptionist:receptionist_dashboard' %}" class="btn btn-secondary">
+                            <a href="{% url 'receptionist_dashboard' %}" class="btn btn-secondary">
                                 <i class="bi bi-x-circle"></i> Cancel
                             </a>
                         </div>
