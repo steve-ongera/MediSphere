@@ -2312,3 +2312,270 @@ def visit_statistics(request):
     }
     
     return JsonResponse(stats)
+
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.http import JsonResponse
+from django.db.models import Q, Sum, F
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse_lazy
+from .models import Drug, DrugStock, DrugCategory
+from django.utils import timezone
+
+
+@login_required
+def drug_inventory_list(request):
+    """Main drug inventory view with search functionality"""
+    search_query = request.GET.get('search', '')
+    category_filter = request.GET.get('category', '')
+    stock_status = request.GET.get('stock_status', '')
+    
+    # Base queryset with stock annotation
+    drugs = Drug.objects.filter(is_active=True).select_related('category')
+    
+    # Apply search filter
+    if search_query:
+        drugs = drugs.filter(
+            Q(name__icontains=search_query) |
+            Q(generic_name__icontains=search_query) |
+            Q(brand_name__icontains=search_query) |
+            Q(drug_code__icontains=search_query)
+        )
+    
+    # Apply category filter
+    if category_filter:
+        drugs = drugs.filter(category_id=category_filter)
+    
+    # Apply stock status filter
+    if stock_status == 'low':
+        drugs = [drug for drug in drugs if drug.needs_reorder]
+    elif stock_status == 'out':
+        drugs = [drug for drug in drugs if drug.current_stock == 0]
+    elif stock_status == 'available':
+        drugs = [drug for drug in drugs if drug.current_stock > drug.reorder_level]
+    
+    # Get all categories for filter dropdown
+    categories = DrugCategory.objects.all().order_by('name')
+    
+    # For AJAX requests, return only the HTML fragment
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        html = render(request, 'pharmacy/includes/drug_cards.html', {
+            'drugs': drugs
+        }).content.decode('utf-8')
+        return JsonResponse({'html': html})
+    
+    context = {
+        'drugs': drugs,
+        'categories': categories,
+        'search_query': search_query,
+        'category_filter': category_filter,
+        'stock_status': stock_status,
+    }
+    
+    return render(request, 'pharmacy/drug_inventory.html', context)
+
+
+@login_required
+def drug_detail_ajax(request, drug_id):
+    """AJAX endpoint to get drug details"""
+    drug = get_object_or_404(Drug, id=drug_id)
+    
+    # Get stock batches
+    stock_batches = DrugStock.objects.filter(
+        drug=drug,
+        quantity__gt=0
+    ).order_by('expiry_date')
+    
+    # Get expiring soon batches (within 3 months)
+    three_months_from_now = timezone.now().date() + timezone.timedelta(days=90)
+    expiring_soon = stock_batches.filter(expiry_date__lte=three_months_from_now)
+    
+    data = {
+        'id': drug.id,
+        'name': drug.name,
+        'generic_name': drug.generic_name,
+        'brand_name': drug.brand_name,
+        'drug_code': drug.drug_code,
+        'category': drug.category.name if drug.category else 'No category',
+        'form': drug.get_form_display(),
+        'strength': drug.strength,
+        'unit_price': str(drug.unit_price),
+        'current_stock': drug.current_stock,
+        'reorder_level': drug.reorder_level,
+        'needs_reorder': drug.needs_reorder,
+        'description': drug.description,
+        'contraindications': drug.contraindications,
+        'side_effects': drug.side_effects,
+        'requires_prescription': drug.requires_prescription,
+        'stock_batches': [
+            {
+                'batch_number': batch.batch_number,
+                'quantity': batch.quantity,
+                'expiry_date': batch.expiry_date.strftime('%Y-%m-%d'),
+                'days_to_expiry': batch.days_to_expiry,
+                'is_expired': batch.is_expired,
+                'supplier': batch.supplier_name,
+            }
+            for batch in stock_batches
+        ],
+        'expiring_soon_count': expiring_soon.count(),
+        'last_updated': drug.updated_at.strftime('%Y-%m-%d %H:%M'),
+    }
+    
+    return JsonResponse(data)
+
+
+@login_required
+def drug_update_ajax(request, drug_id):
+    """AJAX endpoint to update drug details"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
+    
+    try:
+        drug = get_object_or_404(Drug, id=drug_id)
+        
+        import json
+        data = json.loads(request.body)
+        
+        # Update drug fields
+        drug.name = data.get('name', drug.name)
+        drug.generic_name = data.get('generic_name', drug.generic_name)
+        drug.brand_name = data.get('brand_name', drug.brand_name)
+        drug.strength = data.get('strength', drug.strength)
+        drug.unit_price = data.get('unit_price', drug.unit_price)
+        drug.reorder_level = data.get('reorder_level', drug.reorder_level)
+        drug.description = data.get('description', drug.description)
+        drug.contraindications = data.get('contraindications', drug.contraindications)
+        drug.side_effects = data.get('side_effects', drug.side_effects)
+        
+        drug.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Drug updated successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=400)
+
+
+@login_required
+def drug_create(request):
+    """Create new drug"""
+    if request.method == 'POST':
+        try:
+            # Get category
+            category_id = request.POST.get('category')
+            category = get_object_or_404(DrugCategory, id=category_id) if category_id else None
+            
+            # Create drug
+            drug = Drug.objects.create(
+                name=request.POST.get('name'),
+                generic_name=request.POST.get('generic_name'),
+                brand_name=request.POST.get('brand_name', ''),
+                drug_code=request.POST.get('drug_code'),
+                category=category,
+                form=request.POST.get('form'),
+                strength=request.POST.get('strength'),
+                unit_price=request.POST.get('unit_price'),
+                reorder_level=request.POST.get('reorder_level', 10),
+                description=request.POST.get('description', ''),
+                contraindications=request.POST.get('contraindications', ''),
+                side_effects=request.POST.get('side_effects', ''),
+                requires_prescription=request.POST.get('requires_prescription') == 'on',
+            )
+            
+            messages.success(request, f'Drug "{drug.name}" created successfully!')
+            return redirect('drug-inventory')
+            
+        except Exception as e:
+            messages.error(request, f'Error creating drug: {str(e)}')
+    
+    categories = DrugCategory.objects.all().order_by('name')
+    context = {
+        'categories': categories,
+        'drug_forms': Drug.DRUG_FORM_CHOICES,
+    }
+    return render(request, 'pharmacy/drug_create.html', context)
+
+
+@login_required
+def drug_delete(request, drug_id):
+    """Soft delete drug (set is_active to False)"""
+    if request.method == 'POST':
+        drug = get_object_or_404(Drug, id=drug_id)
+        drug.is_active = False
+        drug.save()
+        messages.success(request, f'Drug "{drug.name}" deleted successfully!')
+    
+    return redirect('drug-inventory')
+
+
+@login_required
+def add_stock(request, drug_id):
+    """Add new stock batch for a drug"""
+    drug = get_object_or_404(Drug, id=drug_id)
+    
+    if request.method == 'POST':
+        try:
+            stock = DrugStock.objects.create(
+                drug=drug,
+                batch_number=request.POST.get('batch_number'),
+                quantity=request.POST.get('quantity'),
+                unit_cost=request.POST.get('unit_cost'),
+                manufacture_date=request.POST.get('manufacture_date'),
+                expiry_date=request.POST.get('expiry_date'),
+                supplier_name=request.POST.get('supplier_name'),
+                received_by=request.user,
+                notes=request.POST.get('notes', ''),
+            )
+            
+            messages.success(request, f'Stock added successfully! Batch: {stock.batch_number}')
+            return redirect('drug-inventory')
+            
+        except Exception as e:
+            messages.error(request, f'Error adding stock: {str(e)}')
+    
+    context = {
+        'drug': drug,
+    }
+    return render(request, 'pharmacy/add_stock.html', context)
+
+
+@login_required
+def low_stock_report(request):
+    """Report of drugs with low stock"""
+    drugs = Drug.objects.filter(is_active=True).select_related('category')
+    low_stock_drugs = [drug for drug in drugs if drug.needs_reorder]
+    
+    context = {
+        'drugs': low_stock_drugs,
+        'total_items': len(low_stock_drugs),
+    }
+    return render(request, 'pharmacy/low_stock_report.html', context)
+
+
+@login_required
+def expiring_stock_report(request):
+    """Report of stock expiring soon"""
+    days_ahead = int(request.GET.get('days', 90))
+    cutoff_date = timezone.now().date() + timezone.timedelta(days=days_ahead)
+    
+    expiring_stock = DrugStock.objects.filter(
+        quantity__gt=0,
+        expiry_date__lte=cutoff_date,
+        expiry_date__gte=timezone.now().date()
+    ).select_related('drug', 'drug__category').order_by('expiry_date')
+    
+    context = {
+        'expiring_stock': expiring_stock,
+        'days_ahead': days_ahead,
+        'cutoff_date': cutoff_date,
+    }
+    return render(request, 'pharmacy/expiring_stock_report.html', context)

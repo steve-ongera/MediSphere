@@ -1,0 +1,490 @@
+﻿
+{% extends 'base/base.html'%}
+{% load static %}
+
+{% block title %}Drug Inventory - Clinic Management System{% endblock %}
+
+{% block content %}
+<div class="message-container" id="system-messages">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagetitle">
+    <h1><i class="bi bi-capsule me-2"></i>Drug Inventory</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#"><i class="bi bi-house-door"></i> Dashboard</a></li>
+            <li class="breadcrumb-item">Pharmacy</li>
+            <li class="breadcrumb-item active">Inventory</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row mb-3">
+        <!-- Quick Stats -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-capsule-pill text-primary" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-0">Total Drugs</h6>
+                            <h3 class="mb-0">{{ drugs.count }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-0">Low Stock</h6>
+                            <h3 class="mb-0">{{ drugs|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-calendar-x text-danger" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-0">Expiring Soon</h6>
+                            <h3 class="mb-0">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-tags text-success" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-0">Categories</h6>
+                            <h3 class="mb-0">{{ categories.count }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-clinic-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <h5 class="card-title mb-0"><i class="bi bi-capsule me-2"></i>All Drugs</h5>
+                        <div class="d-flex gap-2 mt-2 mt-md-0">
+                            <!-- Search -->
+                            <div class="input-group" style="max-width: 300px;">
+                                <input type="text" class="form-control" placeholder="Search drugs..." 
+                                       id="drugSearch" minlength="2" value="{{ search_query }}">
+                                <button class="btn btn-outline-light" type="button" id="searchButton">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Category Filter -->
+                            <select class="form-select" id="categoryFilter" style="max-width: 200px;">
+                                <option value="">All Categories</option>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}" {% if category_filter == category.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            
+                            <!-- Stock Status Filter -->
+                            <select class="form-select" id="stockStatusFilter" style="max-width: 150px;">
+                                <option value="">All Stock</option>
+                                <option value="available" {% if stock_status == 'available' %}selected{% endif %}>In Stock</option>
+                                <option value="low" {% if stock_status == 'low' %}selected{% endif %}>Low Stock</option>
+                                <option value="out" {% if stock_status == 'out' %}selected{% endif %}>Out of Stock</option>
+                            </select>
+                            
+                            <!-- Actions -->
+                            <a href="{% url 'drug-create' %}" class="btn btn-clinic-light" style="color:grey">
+                                <i class="bi bi-plus-circle me-2"></i>Add New Drug
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body" id="drugCardsContainer">
+                    {% include 'pharmacy/includes/drug_cards.html' %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .form-control:focus, .form-select:focus {
+        border-color: var(--clinic-primary);
+        box-shadow: 0 0 0 0.25rem rgba(26, 140, 255, 0.25);
+    }
+    
+    .card {
+        border-radius: 0.5rem;
+    }
+    
+    .drug-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .drug-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(26, 115, 232, 0.15);
+    }
+</style>
+
+<!-- Drug Detail Modal -->
+<div class="modal fade" id="drugDetailModal" tabindex="-1" aria-labelledby="drugDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #1a73e8; color: white;">
+                <h5 style="color:white" class="modal-title" id="drugDetailModalLabel">Drug Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4 text-center">
+                        <div class="mb-3" style="height: 200px; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-pills fa-5x text-muted"></i>
+                        </div>
+                        <h4 id="drugDetailName">Loading...</h4>
+                        <div class="badge bg-primary bg-opacity-10 text-primary mb-3" id="drugDetailCategory">...</div>
+                        <hr>
+                        <div class="text-start">
+                            <p><strong><i class="bi bi-upc-scan me-2" style="color: #1a73e8;"></i> Code:</strong> <span id="drugDetailCode">...</span></p>
+                            <p><strong><i class="bi bi-capsule me-2" style="color: #1a73e8;"></i> Form:</strong> <span id="drugDetailForm">...</span></p>
+                            <p><strong><i class="bi bi-lightning me-2" style="color: #1a73e8;"></i> Strength:</strong> <span id="drugDetailStrength">...</span></p>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card mb-3 border-primary border-opacity-25">
+                            <div class="card-header bg-primary bg-opacity-10">
+                                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Stock Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Current Stock:</strong> <span id="drugDetailStock" class="fw-bold">...</span></p>
+                                        <p><strong>Reorder Level:</strong> <span id="drugDetailReorder">...</span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Unit Price:</strong> <span id="drugDetailPrice" class="fw-bold">...</span></p>
+                                        <p><strong>Last Updated:</strong> <span id="drugDetailUpdated">...</span></p>
+                                    </div>
+                                </div>
+                                <div id="drugDetailStockBatches"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3 border-primary border-opacity-25">
+                            <div class="card-header bg-primary bg-opacity-10">
+                                <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Description</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="drugDetailDescription">No description available</div>
+                            </div>
+                        </div>
+                        
+                        <div class="card border-warning border-opacity-25" id="drugDetailWarnings" style="display: none;">
+                            <div class="card-header bg-warning bg-opacity-10">
+                                <h6 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Important Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Contraindications:</strong> <span id="drugDetailContra">...</span></p>
+                                <p><strong>Side Effects:</strong> <span id="drugDetailSideEffects">...</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary edit-from-detail" data-id="">
+                    <i class="bi bi-pencil me-2"></i>Edit Drug
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Drug Modal -->
+<div class="modal fade" id="editDrugModal" tabindex="-1" aria-labelledby="editDrugModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #0d6efd; color: white;">
+                <h5 class="modal-title" id="editDrugModalLabel">Edit Drug</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editDrugForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="editDrugId" name="id" value="">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editDrugName" class="form-label">Drug Name *</label>
+                            <input type="text" class="form-control" id="editDrugName" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editDrugGeneric" class="form-label">Generic Name *</label>
+                            <input type="text" class="form-control" id="editDrugGeneric" name="generic_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editDrugBrand" class="form-label">Brand Name</label>
+                            <input type="text" class="form-control" id="editDrugBrand" name="brand_name">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editDrugStrength" class="form-label">Strength</label>
+                            <input type="text" class="form-control" id="editDrugStrength" name="strength" placeholder="e.g., 500mg">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editDrugPrice" class="form-label">Unit Price (KSh)</label>
+                            <input type="number" class="form-control" id="editDrugPrice" name="unit_price" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editDrugReorder" class="form-label">Reorder Level</label>
+                            <input type="number" class="form-control" id="editDrugReorder" name="reorder_level" min="0">
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="editDrugDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editDrugDescription" name="description" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="editDrugContra" class="form-label">Contraindications</label>
+                            <textarea class="form-control" id="editDrugContra" name="contraindications" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label for="editDrugSideEffects" class="form-label">Side Effects</label>
+                            <textarea class="form-control" id="editDrugSideEffects" name="side_effects" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Drug</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('drugSearch');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const stockStatusFilter = document.getElementById('stockStatusFilter');
+    const searchButton = document.getElementById('searchButton');
+    const drugCardsContainer = document.getElementById('drugCardsContainer');
+    let searchTimeout;
+
+    function performSearch() {
+        const searchTerm = searchInput.value.trim();
+        const category = categoryFilter.value;
+        const stockStatus = stockStatusFilter.value;
+        
+        let url = window.location.pathname + '?';
+        if (searchTerm.length >= 2) url += `search=${encodeURIComponent(searchTerm)}&`;
+        if (category) url += `category=${category}&`;
+        if (stockStatus) url += `stock_status=${stockStatus}`;
+        
+        drugCardsContainer.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-muted"></i></div>';
+        
+        fetch(url, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            drugCardsContainer.innerHTML = data.html;
+            history.pushState({}, '', url);
+            attachEventListeners();
+        })
+        .catch(() => {
+            drugCardsContainer.innerHTML = '<div class="text-center py-5"><i class="fas fa-exclamation-triangle fa-2x text-danger"></i><p class="text-muted mt-2">Error loading results</p></div>';
+        });
+    }
+
+    searchButton.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch());
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 500);
+    });
+    categoryFilter.addEventListener('change', performSearch);
+    stockStatusFilter.addEventListener('change', performSearch);
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function loadDrugForEdit(drugId) {
+        fetch(`/ajax/drug/${drugId}/`, {
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('editDrugId').value = drugId;
+            document.getElementById('editDrugName').value = data.name || '';
+            document.getElementById('editDrugGeneric').value = data.generic_name || '';
+            document.getElementById('editDrugBrand').value = data.brand_name || '';
+            document.getElementById('editDrugStrength').value = data.strength || '';
+            document.getElementById('editDrugPrice').value = data.unit_price || '';
+            document.getElementById('editDrugReorder').value = data.reorder_level || '';
+            document.getElementById('editDrugDescription').value = data.description || '';
+            document.getElementById('editDrugContra').value = data.contraindications || '';
+            document.getElementById('editDrugSideEffects').value = data.side_effects || '';
+            
+            new bootstrap.Modal(document.getElementById('editDrugModal')).show();
+        });
+    }
+
+    function attachEventListeners() {
+        document.querySelectorAll('.view-drug').forEach(button => {
+            button.addEventListener('click', function() {
+                const drugId = this.dataset.id;
+                fetch(`/ajax/drug/${drugId}/`, {
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('drugDetailName').innerText = data.name;
+                    document.getElementById('drugDetailCategory').innerText = data.category;
+                    document.getElementById('drugDetailCode').innerText = data.drug_code;
+                    document.getElementById('drugDetailForm').innerText = data.form;
+                    document.getElementById('drugDetailStrength').innerText = data.strength;
+                    document.getElementById('drugDetailStock').innerText = data.current_stock;
+                    document.getElementById('drugDetailReorder').innerText = data.reorder_level;
+                    document.getElementById('drugDetailPrice').innerText = `KSh ${data.unit_price}`;
+                    document.getElementById('drugDetailUpdated').innerText = data.last_updated;
+                    document.getElementById('drugDetailDescription').innerText = data.description || 'No description available';
+                    
+                    if (data.contraindications || data.side_effects) {
+                        document.getElementById('drugDetailWarnings').style.display = 'block';
+                        document.getElementById('drugDetailContra').innerText = data.contraindications || 'None listed';
+                        document.getElementById('drugDetailSideEffects').innerText = data.side_effects || 'None listed';
+                    }
+                    
+                    const batchesHtml = data.stock_batches.map(batch => 
+                        `<div class="alert alert-info mt-2">
+                            <strong>Batch ${batch.batch_number}:</strong> ${batch.quantity} units | 
+                            Expires: ${batch.expiry_date} (${batch.days_to_expiry} days)
+                        </div>`
+                    ).join('');
+                    document.getElementById('drugDetailStockBatches').innerHTML = batchesHtml || '<p class="text-muted">No active batches</p>';
+                    
+                    document.querySelector('.edit-from-detail').dataset.id = drugId;
+                });
+            });
+        });
+
+        document.querySelectorAll('.edit-drug').forEach(button => {
+            button.addEventListener('click', function() {
+                loadDrugForEdit(this.dataset.id);
+            });
+        });
+
+        document.querySelectorAll('.delete-drug').forEach(button => {
+            button.addEventListener('click', function() {
+                if (confirm('Are you sure you want to delete this drug?')) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = this.dataset.url;
+                    const csrf = document.createElement('input');
+                    csrf.type = 'hidden';
+                    csrf.name = 'csrfmiddlewaretoken';
+                    csrf.value = getCookie('csrftoken');
+                    form.appendChild(csrf);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        });
+    }
+
+    document.querySelector('.edit-from-detail')?.addEventListener('click', function() {
+        bootstrap.Modal.getInstance(document.getElementById('drugDetailModal')).hide();
+        setTimeout(() => loadDrugForEdit(this.dataset.id), 300);
+    });
+
+    document.getElementById('editDrugForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const drugId = document.getElementById('editDrugId').value;
+        
+        const jsonData = {
+            name: document.getElementById('editDrugName').value,
+            generic_name: document.getElementById('editDrugGeneric').value,
+            brand_name: document.getElementById('editDrugBrand').value,
+            strength: document.getElementById('editDrugStrength').value,
+            unit_price: document.getElementById('editDrugPrice').value,
+            reorder_level: document.getElementById('editDrugReorder').value,
+            description: document.getElementById('editDrugDescription').value,
+            contraindications: document.getElementById('editDrugContra').value,
+            side_effects: document.getElementById('editDrugSideEffects').value
+        };
+
+        fetch(`/ajax/update-drug/${drugId}/`, {
+            method: 'POST',
+            body: JSON.stringify(jsonData),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editDrugModal')).hide();
+                alert('Drug updated successfully!');
+                window.location.reload();
+            }
+        });
+    });
+
+    attachEventListeners();
+});
+</script>
+
+{% endblock %}

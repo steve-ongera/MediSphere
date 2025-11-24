@@ -11,18 +11,9 @@ urlpatterns = [
     path('', views.login_view, name='login'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
-    
-     # =========================================================================
-    # PASSWORD MANAGEMENT
-    # =========================================================================
-    # Email-based password reset
     path('forgot-password/', views.forgot_password_view, name='forgot_password'),
     path('reset-password/<uidb64>/<token>/', views.password_reset_confirm_view, name='password_reset_confirm'),
-    
-    # OTP-based password reset (alternative)
     path('forgot-password-otp/', views.forgot_password_otp_view, name='forgot_password_otp'),
-    
-    # Change password (for logged-in users)
     path('change-password/', views.change_password_view, name='change_password'),
     
     # Main Dashboard (Router)
@@ -47,27 +38,25 @@ urlpatterns = [
     path('patients/<str:patient_number>/', views.patients_detail, name='patients-detail'),
     path('patients/<str:patient_number>/edit/', views.patients_update, name='patients-update'),
     path('patients/<str:patient_number>/delete/', views.patients_delete, name='patients-delete'),
-
-    # Search and autocomplete
     path('patients/api/search/', views.patient_search_api, name='patient-search-api'),
     
     # Visit Registration
     path('visits/register/', views.visits_register, name='visits-register'),
-    
-    # Triage
     path('visits/triage/queue/', views.triage_queue, name='triage-queue'),
-    path('visits/triage/<str:visit_number>/', views.triage_assessment, name='triage-assessment'),
-    
-    # Visits List & Details
     path('visits/', views.visits_list, name='visits-list'),
     path('visits/<str:visit_number>/', views.visits_detail, name='visits-detail'),
-    
-    # Patient Queue
     path('visits/queue/consultation/', views.patient_queue, name='patient-queue'),
-    
-    # API Endpoints
     path('visits/api/patient-search/', views.patient_search_for_visit, name='patient-search-for-visit'),
     path('visits/api/statistics/', views.visit_statistics, name='visit-statistics'),
     path('visits/api/<str:visit_number>/status/', views.visit_update_status, name='visit-update-status'),
+    
+    path('inventory/', views.drug_inventory_list, name='drug-inventory'),
+    path('drug/create/', views.drug_create, name='drug-create'),
+    path('drug/<int:drug_id>/delete/', views.drug_delete, name='drug-delete'),
+    path('drug/<int:drug_id>/add-stock/', views.add_stock, name='add-stock'),
+    path('ajax/drug/<int:drug_id>/', views.drug_detail_ajax, name='drug-detail-ajax'),
+    path('ajax/update-drug/<int:drug_id>/', views.drug_update_ajax, name='drug-update-ajax'),
+    path('reports/low-stock/', views.low_stock_report, name='low-stock-report'),
+    path('reports/expiring/', views.expiring_stock_report, name='expiring-stock-report'),
   
 ]

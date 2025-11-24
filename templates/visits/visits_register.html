@@ -116,7 +116,7 @@
                                     <label for="{{ form.chief_complaint.id_for_label }}" class="form-label">
                                         Chief Complaint <span class="text-danger">*</span>
                                     </label>
-                                    {% render_field form.chief_complaint class="form-control" rows="3" placeholder="Enter patient's main complaint..." %}
+                                    {% render_field form.chief_complaint class="form-control" rows="3" placeholder="Enter patient main complaint..." %}
                                     {% if form.chief_complaint.errors %}
                                     <div class="text-danger small mt-1">{{ form.chief_complaint.errors.0 }}</div>
                                     {% endif %}
