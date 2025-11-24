@@ -565,3 +565,376 @@ class QuickTriageForm(forms.ModelForm):
             'emergency_level': forms.Select(attrs={'class': 'form-select'}),
             'triage_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+        
+        
+# receptionist/forms.py
+"""
+Forms for Receptionist Portal
+"""
+
+from django import forms
+from django.core.exceptions import ValidationError
+from .models import Patient, PatientVisit, Appointment, User
+from datetime import datetime, timedelta
+
+
+class PatientRegistrationForm(forms.ModelForm):
+    """Form for registering new patients"""
+    
+    class Meta:
+        model = Patient
+        fields = [
+            'first_name', 'middle_name', 'last_name',
+            'date_of_birth', 'gender', 'id_number',
+            'phone_number', 'alternate_phone', 'email',
+            'county', 'sub_county', 'ward', 'village', 'postal_address',
+            'next_of_kin_name', 'next_of_kin_relationship', 
+            'next_of_kin_phone', 'next_of_kin_address',
+            'blood_group', 'allergies', 'chronic_conditions',
+            'nhif_status', 'nhif_number', 'nhif_principal_name',
+            'notes'
+        ]
+        widgets = {
+            'first_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'First Name',
+                'required': True
+            }),
+            'middle_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Middle Name (Optional)'
+            }),
+            'last_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Last Name',
+                'required': True
+            }),
+            'date_of_birth': forms.DateInput(attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'required': True
+            }),
+            'gender': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'id_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'National ID Number'
+            }),
+            'phone_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': '0712345678 or 0112345678',
+                'required': True
+            }),
+            'alternate_phone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Alternate Phone (Optional)'
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Email Address (Optional)'
+            }),
+            'county': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'County',
+                'required': True
+            }),
+            'sub_county': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Sub County'
+            }),
+            'ward': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Ward'
+            }),
+            'village': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Village/Estate'
+            }),
+            'postal_address': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'P.O. Box'
+            }),
+            'next_of_kin_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Next of Kin Name',
+                'required': True
+            }),
+            'next_of_kin_relationship': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Relationship (e.g., Spouse, Parent)',
+                'required': True
+            }),
+            'next_of_kin_phone': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Next of Kin Phone',
+                'required': True
+            }),
+            'next_of_kin_address': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Next of Kin Address'
+            }),
+            'blood_group': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'allergies': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'List any known allergies (e.g., Penicillin, Peanuts)'
+            }),
+            'chronic_conditions': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'List chronic conditions (e.g., Diabetes, Hypertension)'
+            }),
+            'nhif_status': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'nhif_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'NHIF Number'
+            }),
+            'nhif_principal_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Principal Member Name (for dependents)'
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Additional notes'
+            }),
+        }
+    
+    def clean_phone_number(self):
+        phone = self.cleaned_data.get('phone_number')
+        # Basic validation - you can enhance this
+        if phone and not (phone.startswith('07') or phone.startswith('01') or phone.startswith('254')):
+            raise ValidationError('Please enter a valid Kenyan phone number')
+        return phone
+    
+    def clean_date_of_birth(self):
+        dob = self.cleaned_data.get('date_of_birth')
+        if dob:
+            today = datetime.now().date()
+            if dob > today:
+                raise ValidationError('Date of birth cannot be in the future')
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            if age > 150:
+                raise ValidationError('Please enter a valid date of birth')
+        return dob
+
+
+class PatientVisitForm(forms.ModelForm):
+    """Form for creating patient visits"""
+    
+    patient_search = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search patient by name, ID, or phone...',
+            'id': 'patient-search-input'
+        }),
+        label='Search Patient'
+    )
+    
+    class Meta:
+        model = PatientVisit
+        fields = [
+            'patient', 'visit_type', 'chief_complaint',
+            'priority_level', 'is_referral', 
+            'referring_facility', 'referral_notes'
+        ]
+        widgets = {
+            'patient': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'visit_type': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'chief_complaint': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Patient\'s main complaint or reason for visit',
+                'required': True
+            }),
+            'priority_level': forms.Select(attrs={
+                'class': 'form-select'
+            }, choices=[
+                (1, '1 - Critical'),
+                (2, '2 - Emergency'),
+                (3, '3 - Urgent'),
+                (4, '4 - Normal'),
+                (5, '5 - Low Priority'),
+            ]),
+            'is_referral': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            }),
+            'referring_facility': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Name of referring facility'
+            }),
+            'referral_notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Referral notes'
+            }),
+        }
+
+
+class AppointmentForm(forms.ModelForm):
+    """Form for scheduling appointments"""
+    
+    class Meta:
+        model = Appointment
+        fields = [
+            'patient', 'doctor', 'appointment_datetime',
+            'duration_minutes', 'appointment_type',
+            'reason', 'notes'
+        ]
+        widgets = {
+            'patient': forms.Select(attrs={
+                'class': 'form-select select2',
+                'required': True
+            }),
+            'doctor': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'appointment_datetime': forms.DateTimeInput(attrs={
+                'class': 'form-control',
+                'type': 'datetime-local',
+                'required': True
+            }),
+            'duration_minutes': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'value': 30,
+                'min': 15,
+                'max': 120,
+                'step': 15
+            }),
+            'appointment_type': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., Follow-up, New Visit, Consultation',
+                'required': True
+            }),
+            'reason': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Reason for appointment',
+                'required': True
+            }),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 2,
+                'placeholder': 'Additional notes'
+            }),
+        }
+    
+    def clean_appointment_datetime(self):
+        appointment_dt = self.cleaned_data.get('appointment_datetime')
+        if appointment_dt:
+            now = datetime.now()
+            if appointment_dt < now:
+                raise ValidationError('Appointment time cannot be in the past')
+            
+            # Check if appointment is too far in the future (e.g., 6 months)
+            six_months = now + timedelta(days=180)
+            if appointment_dt > six_months:
+                raise ValidationError('Appointment cannot be scheduled more than 6 months in advance')
+        
+        return appointment_dt
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        doctor = cleaned_data.get('doctor')
+        appointment_dt = cleaned_data.get('appointment_datetime')
+        duration = cleaned_data.get('duration_minutes', 30)
+        
+        # Check for doctor availability (overlapping appointments)
+        if doctor and appointment_dt:
+            # Check for overlapping appointments
+            end_time = appointment_dt + timedelta(minutes=duration)
+            
+            overlapping = Appointment.objects.filter(
+                doctor=doctor,
+                status__in=['SCHEDULED', 'CONFIRMED'],
+                appointment_datetime__lt=end_time,
+                appointment_datetime__gt=appointment_dt - timedelta(minutes=60)
+            )
+            
+            # Exclude current appointment if editing
+            if self.instance and self.instance.pk:
+                overlapping = overlapping.exclude(pk=self.instance.pk)
+            
+            if overlapping.exists():
+                raise ValidationError(
+                    f'Dr. {doctor.last_name} has another appointment at this time. '
+                    'Please select a different time.'
+                )
+        
+        return cleaned_data
+
+
+class PatientSearchForm(forms.Form):
+    """Advanced patient search form"""
+    
+    patient_number = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Patient Number (e.g., PAT20240101001)'
+        })
+    )
+    
+    id_number = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'National ID Number'
+        })
+    )
+    
+    phone_number = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Phone Number'
+        })
+    )
+    
+    first_name = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'First Name'
+        })
+    )
+    
+    last_name = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Last Name'
+        })
+    )
+    
+    date_of_birth = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        
+        # Ensure at least one search field is filled
+        if not any(cleaned_data.values()):
+            raise ValidationError('Please enter at least one search criterion')
+        
+        return cleaned_data

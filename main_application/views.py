@@ -785,15 +785,15 @@ def pharmacy_dashboard(request):
     return render(request, 'dashboards/pharmacy.html', context)
 
 
-@login_required
-@role_required('RECEPTIONIST')
-def reception_dashboard(request):
-    """Reception Dashboard"""
-    context = {
-        'page_title': 'Reception Dashboard',
-        'user': request.user
-    }
-    return render(request, 'dashboards/reception.html', context)
+# @login_required
+# @role_required('RECEPTIONIST')
+# def reception_dashboard(request):
+#     """Reception Dashboard"""
+#     context = {
+#         'page_title': 'Reception Dashboard',
+#         'user': request.user
+#     }
+#     return render(request, 'dashboards/reception.html', context)
 
 
 @login_required
@@ -3138,3 +3138,664 @@ def visit_search_ajax(request):
         })
     
     return JsonResponse({'results': results})
+
+
+
+# receptionist/views.py
+"""
+Receptionist Portal Views
+Handles patient registration, queue management, and appointments
+"""
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Q, Count
+from django.utils import timezone
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from datetime import datetime, timedelta
+
+from .models import (
+    Patient, PatientVisit, Appointment, User, 
+    Department, HospitalSettings
+)
+from .forms import (
+    PatientRegistrationForm, PatientVisitForm, 
+    AppointmentForm, PatientSearchForm
+)
+
+
+# =============================================================================
+# DASHBOARD
+# =============================================================================
+
+@login_required
+def receptionist_dashboard_view(request):
+    """Receptionist dashboard with key metrics and quick actions"""
+    
+    today = timezone.now().date()
+    week_start = today - timedelta(days=today.weekday())
+    
+    # Get today's statistics
+    todays_appointments = Appointment.objects.filter(
+        appointment_datetime__date=today,
+        status__in=['SCHEDULED', 'CONFIRMED', 'ARRIVED']
+    ).select_related('patient', 'doctor')
+    
+    todays_visits = PatientVisit.objects.filter(
+        visit_date=today
+    ).select_related('patient')
+    
+    # Get new patients this week
+    new_patients_this_week = Patient.objects.filter(
+        registration_date__gte=week_start
+    ).count()
+    
+    # Recent patient registrations
+    recent_patients = Patient.objects.filter(
+        is_active=True
+    ).order_by('-registration_date')[:6]
+    
+    # Available doctors (mock data - adjust based on your logic)
+    available_doctors = User.objects.filter(
+        role__name__in=['DOCTOR', 'CLINICAL_OFFICER'],
+        is_active_staff=True
+    )[:5]
+    
+    # Mock announcements (you can create an Announcement model)
+    announcements = []
+    
+    # Pending prescriptions (mock - adjust based on your prescription model)
+    pending_prescriptions = []
+    
+    context = {
+        'todays_appointments': todays_appointments,
+        'todays_visits': todays_visits,
+        'new_patients_this_week': new_patients_this_week,
+        'recent_patients': recent_patients,
+        'available_doctors': available_doctors,
+        'announcements': announcements,
+        'pending_prescriptions': pending_prescriptions,
+    }
+    
+    return render(request, 'receptionist/dashboard.html', context)
+
+
+# =============================================================================
+# PATIENT MANAGEMENT
+# =============================================================================
+
+@login_required
+def receptionist_register_patient_view(request):
+    """Register a new patient"""
+    
+    if request.method == 'POST':
+        form = PatientRegistrationForm(request.POST)
+        if form.is_valid():
+            patient = form.save(commit=False)
+            patient.registered_by = request.user
+            patient.save()
+            
+            messages.success(
+                request, 
+                f'Patient {patient.full_name} registered successfully! '
+                f'Patient Number: {patient.patient_number}'
+            )
+            
+            # Redirect to create visit or back to form
+            if 'save_and_visit' in request.POST:
+                return redirect('receptionist_create_visit', patient_id=patient.id)
+            else:
+                return redirect('receptionist_register_patient')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = PatientRegistrationForm()
+    
+    context = {
+        'form': form,
+        'title': 'Register New Patient'
+    }
+    
+    return render(request, 'receptionist/register_patient.html', context)
+
+
+@login_required
+def receptionist_patient_records_view(request):
+    """View all patient records with search and filter"""
+    
+    # Get search parameters
+    search_query = request.GET.get('search', '')
+    filter_status = request.GET.get('status', 'all')
+    
+    # Base queryset
+    patients = Patient.objects.all().order_by('-registration_date')
+    
+    # Apply filters
+    if search_query:
+        patients = patients.filter(
+            Q(patient_number__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query) |
+            Q(id_number__icontains=search_query) |
+            Q(phone_number__icontains=search_query)
+        )
+    
+    if filter_status == 'active':
+        patients = patients.filter(is_active=True)
+    elif filter_status == 'inactive':
+        patients = patients.filter(is_active=False)
+    
+    # Pagination
+    paginator = Paginator(patients, 20)  # 20 patients per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'filter_status': filter_status,
+        'total_patients': patients.count(),
+        'title': 'Patient Records'
+    }
+    
+    return render(request, 'receptionist/patient_records.html', context)
+
+
+@login_required
+def receptionist_search_patient_view(request):
+    """Advanced patient search"""
+    
+    patients = []
+    search_performed = False
+    
+    if request.method == 'GET' and request.GET:
+        form = PatientSearchForm(request.GET)
+        if form.is_valid():
+            search_performed = True
+            patients = Patient.objects.all()
+            
+            # Apply filters
+            if form.cleaned_data.get('patient_number'):
+                patients = patients.filter(
+                    patient_number__icontains=form.cleaned_data['patient_number']
+                )
+            
+            if form.cleaned_data.get('id_number'):
+                patients = patients.filter(
+                    id_number=form.cleaned_data['id_number']
+                )
+            
+            if form.cleaned_data.get('phone_number'):
+                patients = patients.filter(
+                    phone_number__icontains=form.cleaned_data['phone_number']
+                )
+            
+            if form.cleaned_data.get('first_name'):
+                patients = patients.filter(
+                    first_name__icontains=form.cleaned_data['first_name']
+                )
+            
+            if form.cleaned_data.get('last_name'):
+                patients = patients.filter(
+                    last_name__icontains=form.cleaned_data['last_name']
+                )
+            
+            if form.cleaned_data.get('date_of_birth'):
+                patients = patients.filter(
+                    date_of_birth=form.cleaned_data['date_of_birth']
+                )
+            
+            patients = patients.order_by('-registration_date')[:50]
+    else:
+        form = PatientSearchForm()
+    
+    context = {
+        'form': form,
+        'patients': patients,
+        'search_performed': search_performed,
+        'title': 'Search Patient'
+    }
+    
+    return render(request, 'receptionist/search_patient.html', context)
+
+
+@login_required
+def receptionist_patient_detail_view(request, patient_id):
+    """View detailed patient information"""
+    
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get patient's visit history
+    visits = patient.visits.all().order_by('-visit_date')[:10]
+    
+    # Get upcoming appointments
+    upcoming_appointments = patient.appointments.filter(
+        appointment_datetime__gte=timezone.now(),
+        status__in=['SCHEDULED', 'CONFIRMED']
+    ).order_by('appointment_datetime')[:5]
+    
+    # Get recent visits
+    recent_visits = patient.visits.filter(
+        visit_date__gte=timezone.now().date() - timedelta(days=90)
+    ).order_by('-visit_date')[:5]
+    
+    context = {
+        'patient': patient,
+        'visits': visits,
+        'upcoming_appointments': upcoming_appointments,
+        'recent_visits': recent_visits,
+        'title': f'Patient: {patient.full_name}'
+    }
+    
+    return render(request, 'receptionist/patient_detail.html', context)
+
+
+@login_required
+def receptionist_edit_patient_view(request, patient_id):
+    """Edit patient information"""
+    
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    if request.method == 'POST':
+        form = PatientRegistrationForm(request.POST, instance=patient)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Patient {patient.full_name} updated successfully!')
+            return redirect('receptionist_patient_detail', patient_id=patient.id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = PatientRegistrationForm(instance=patient)
+    
+    context = {
+        'form': form,
+        'patient': patient,
+        'title': f'Edit Patient: {patient.full_name}'
+    }
+    
+    return render(request, 'receptionist/edit_patient.html', context)
+
+
+# =============================================================================
+# QUEUE MANAGEMENT
+# =============================================================================
+
+@login_required
+def receptionist_queue_management_view(request):
+    """Manage patient queue"""
+    
+    today = timezone.now().date()
+    
+    # Get today's visits by status
+    waiting_patients = PatientVisit.objects.filter(
+        visit_date=today,
+        status='WAITING'
+    ).select_related('patient').order_by('priority_level', 'arrival_time')
+    
+    in_triage = PatientVisit.objects.filter(
+        visit_date=today,
+        status='TRIAGE'
+    ).select_related('patient')
+    
+    in_consultation = PatientVisit.objects.filter(
+        visit_date=today,
+        status='CONSULTATION'
+    ).select_related('patient')
+    
+    in_lab = PatientVisit.objects.filter(
+        visit_date=today,
+        status='LABORATORY'
+    ).select_related('patient')
+    
+    in_pharmacy = PatientVisit.objects.filter(
+        visit_date=today,
+        status='PHARMACY'
+    ).select_related('patient')
+    
+    completed_today = PatientVisit.objects.filter(
+        visit_date=today,
+        status='COMPLETED'
+    ).count()
+    
+    # Queue statistics
+    total_in_queue = waiting_patients.count()
+    average_wait_time = 0
+    if waiting_patients:
+        total_wait = sum([v.wait_time_minutes for v in waiting_patients])
+        average_wait_time = total_wait / total_in_queue if total_in_queue > 0 else 0
+    
+    context = {
+        'waiting_patients': waiting_patients,
+        'in_triage': in_triage,
+        'in_consultation': in_consultation,
+        'in_lab': in_lab,
+        'in_pharmacy': in_pharmacy,
+        'completed_today': completed_today,
+        'total_in_queue': total_in_queue,
+        'average_wait_time': round(average_wait_time),
+        'title': 'Queue Management'
+    }
+    
+    return render(request, 'receptionist/queue_management.html', context)
+
+
+@login_required
+def receptionist_create_visit_view(request, patient_id=None):
+    """Create a new patient visit"""
+    
+    patient = None
+    if patient_id:
+        patient = get_object_or_404(Patient, id=patient_id)
+    
+    if request.method == 'POST':
+        form = PatientVisitForm(request.POST)
+        if form.is_valid():
+            visit = form.save(commit=False)
+            
+            # If patient_id provided, use it
+            if patient:
+                visit.patient = patient
+            
+            visit.save()
+            
+            messages.success(
+                request,
+                f'Visit created successfully! Queue Number: {visit.queue_number}'
+            )
+            
+            return redirect('receptionist_queue_management')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        initial_data = {}
+        if patient:
+            initial_data['patient'] = patient
+        form = PatientVisitForm(initial=initial_data)
+    
+    context = {
+        'form': form,
+        'patient': patient,
+        'title': 'Create Patient Visit'
+    }
+    
+    return render(request, 'receptionist/create_visit.html', context)
+
+
+# =============================================================================
+# APPOINTMENTS
+# =============================================================================
+
+@login_required
+def receptionist_schedule_appointment_view(request):
+    """Schedule a new appointment"""
+    
+    if request.method == 'POST':
+        form = AppointmentForm(request.POST)
+        if form.is_valid():
+            appointment = form.save()
+            
+            messages.success(
+                request,
+                f'Appointment scheduled for {appointment.patient.full_name} '
+                f'on {appointment.appointment_datetime.strftime("%B %d, %Y at %I:%M %p")}'
+            )
+            
+            # TODO: Send SMS reminder to patient
+            
+            return redirect('receptionist_view_appointments')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = AppointmentForm()
+    
+    # Get available doctors
+    doctors = User.objects.filter(
+        role__name__in=['DOCTOR', 'CLINICAL_OFFICER'],
+        is_active_staff=True
+    )
+    
+    context = {
+        'form': form,
+        'doctors': doctors,
+        'title': 'Schedule Appointment'
+    }
+    
+    return render(request, 'receptionist/schedule_appointment.html', context)
+
+
+@login_required
+def receptionist_view_appointments_view(request):
+    """View all appointments with filters"""
+    
+    # Get filter parameters
+    date_filter = request.GET.get('date', 'today')
+    status_filter = request.GET.get('status', 'all')
+    doctor_id = request.GET.get('doctor', '')
+    
+    # Base queryset
+    appointments = Appointment.objects.all().select_related('patient', 'doctor')
+    
+    # Apply date filter
+    today = timezone.now().date()
+    if date_filter == 'today':
+        appointments = appointments.filter(appointment_datetime__date=today)
+    elif date_filter == 'tomorrow':
+        tomorrow = today + timedelta(days=1)
+        appointments = appointments.filter(appointment_datetime__date=tomorrow)
+    elif date_filter == 'week':
+        week_end = today + timedelta(days=7)
+        appointments = appointments.filter(
+            appointment_datetime__date__gte=today,
+            appointment_datetime__date__lte=week_end
+        )
+    elif date_filter == 'month':
+        month_end = today + timedelta(days=30)
+        appointments = appointments.filter(
+            appointment_datetime__date__gte=today,
+            appointment_datetime__date__lte=month_end
+        )
+    
+    # Apply status filter
+    if status_filter != 'all':
+        appointments = appointments.filter(status=status_filter)
+    
+    # Apply doctor filter
+    if doctor_id:
+        appointments = appointments.filter(doctor_id=doctor_id)
+    
+    appointments = appointments.order_by('appointment_datetime')
+    
+    # Pagination
+    paginator = Paginator(appointments, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    # Get doctors for filter dropdown
+    doctors = User.objects.filter(
+        role__name__in=['DOCTOR', 'CLINICAL_OFFICER'],
+        is_active_staff=True
+    )
+    
+    context = {
+        'page_obj': page_obj,
+        'date_filter': date_filter,
+        'status_filter': status_filter,
+        'doctor_id': doctor_id,
+        'doctors': doctors,
+        'total_appointments': appointments.count(),
+        'title': 'View Appointments'
+    }
+    
+    return render(request, 'receptionist/view_appointments.html', context)
+
+
+@login_required
+def receptionist_appointment_detail_view(request, appointment_id):
+    """View appointment details"""
+    
+    appointment = get_object_or_404(
+        Appointment.objects.select_related('patient', 'doctor'),
+        id=appointment_id
+    )
+    
+    context = {
+        'appointment': appointment,
+        'title': f'Appointment: {appointment.appointment_number}'
+    }
+    
+    return render(request, 'receptionist/appointment_detail.html', context)
+
+
+@login_required
+def receptionist_update_appointment_status_view(request, appointment_id):
+    """Update appointment status (AJAX)"""
+    
+    if request.method == 'POST':
+        appointment = get_object_or_404(Appointment, id=appointment_id)
+        new_status = request.POST.get('status')
+        
+        if new_status in dict(Appointment.STATUS_CHOICES).keys():
+            appointment.status = new_status
+            appointment.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Appointment status updated to {appointment.get_status_display()}'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid status'
+            }, status=400)
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@login_required
+def receptionist_cancel_appointment_view(request, appointment_id):
+    """Cancel an appointment"""
+    
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    if request.method == 'POST':
+        reason = request.POST.get('cancellation_reason', '')
+        appointment.status = 'CANCELLED'
+        appointment.notes = f"Cancelled: {reason}\n{appointment.notes}"
+        appointment.save()
+        
+        messages.success(request, f'Appointment {appointment.appointment_number} cancelled.')
+        
+        # TODO: Send SMS to patient about cancellation
+        
+        return redirect('receptionist_view_appointments')
+    
+    context = {
+        'appointment': appointment,
+        'title': 'Cancel Appointment'
+    }
+    
+    return render(request, 'receptionist/cancel_appointment.html', context)
+
+
+# =============================================================================
+# REPORTS & STATISTICS
+# =============================================================================
+
+@login_required
+def receptionist_daily_report_view(request):
+    """View daily statistics and reports"""
+    
+    today = timezone.now().date()
+    
+    # Daily statistics
+    stats = {
+        'total_visits': PatientVisit.objects.filter(visit_date=today).count(),
+        'new_patients': Patient.objects.filter(registration_date__date=today).count(),
+        'completed_visits': PatientVisit.objects.filter(
+            visit_date=today, 
+            status='COMPLETED'
+        ).count(),
+        'appointments_today': Appointment.objects.filter(
+            appointment_datetime__date=today
+        ).count(),
+        'emergency_visits': PatientVisit.objects.filter(
+            visit_date=today,
+            visit_type='EMERGENCY'
+        ).count(),
+    }
+    
+    # Visit type breakdown
+    visit_types = PatientVisit.objects.filter(
+        visit_date=today
+    ).values('visit_type').annotate(count=Count('id'))
+    
+    # Hourly distribution
+    hourly_visits = PatientVisit.objects.filter(
+        visit_date=today
+    ).extra(select={'hour': 'EXTRACT(hour FROM arrival_time)'}).values('hour').annotate(count=Count('id')).order_by('hour')
+    
+    context = {
+        'stats': stats,
+        'visit_types': visit_types,
+        'hourly_visits': hourly_visits,
+        'report_date': today,
+        'title': 'Daily Report'
+    }
+    
+    return render(request, 'receptionist/daily_report.html', context)
+
+
+# =============================================================================
+# UTILITY VIEWS
+# =============================================================================
+
+@login_required
+def receptionist_print_queue_ticket_view(request, visit_id):
+    """Print queue ticket for patient"""
+    
+    visit = get_object_or_404(PatientVisit, id=visit_id)
+    hospital_settings = HospitalSettings.load()
+    
+    context = {
+        'visit': visit,
+        'hospital': hospital_settings,
+        'print_time': timezone.now()
+    }
+    
+    return render(request, 'receptionist/print_queue_ticket.html', context)
+
+
+@login_required
+def receptionist_check_in_patient_view(request, appointment_id):
+    """Check in a patient with appointment"""
+    
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    
+    if request.method == 'POST':
+        # Create visit from appointment
+        visit = PatientVisit.objects.create(
+            patient=appointment.patient,
+            visit_type='OUTPATIENT',
+            chief_complaint=appointment.reason,
+            status='WAITING'
+        )
+        
+        # Update appointment status
+        appointment.status = 'ARRIVED'
+        appointment.save()
+        
+        messages.success(
+            request,
+            f'{appointment.patient.full_name} checked in. Queue Number: {visit.queue_number}'
+        )
+        
+        return redirect('receptionist_queue_management')
+    
+    context = {
+        'appointment': appointment,
+        'title': 'Check In Patient'
+    }
+    
+    return render(request, 'receptionist/check_in_patient.html', context)

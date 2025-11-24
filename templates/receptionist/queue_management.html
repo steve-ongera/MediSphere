@@ -1,0 +1,286 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}Queue Management{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+    <h1><i class="bi bi-list-ol"></i> Queue Management</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'receptionist:receptionist_dashboard' %}">Home</a></li>
+            <li class="breadcrumb-item active">Queue Management</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section dashboard">
+    <!-- Queue Statistics -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card info-card" style="border-left: 4px solid #FFA500;">
+                <div class="card-body">
+                    <h5 class="card-title">In Queue</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #FFA500;">
+                            <i class="bi bi-hourglass-split text-white"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ total_in_queue }}</h6>
+                            <span class="text-muted small">Waiting</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card info-card" style="border-left: 4px solid #2196F3;">
+                <div class="card-body">
+                    <h5 class="card-title">In Triage</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #2196F3;">
+                            <i class="bi bi-heart-pulse text-white"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ in_triage.count }}</h6>
+                            <span class="text-muted small">Patients</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card info-card" style="border-left: 4px solid #9C27B0;">
+                <div class="card-body">
+                    <h5 class="card-title">In Consultation</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #9C27B0;">
+                            <i class="bi bi-person-video2 text-white"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ in_consultation.count }}</h6>
+                            <span class="text-muted small">With Doctors</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card info-card" style="border-left: 4px solid #4CAF50;">
+                <div class="card-body">
+                    <h5 class="card-title">Completed</h5>
+                    <div class="d-flex align-items-center">
+                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" style="background-color: #4CAF50;">
+                            <i class="bi bi-check-circle text-white"></i>
+                        </div>
+                        <div class="ps-3">
+                            <h6>{{ completed_today }}</h6>
+                            <span class="text-muted small">Today</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">Queue Dashboard</h5>
+                            <small class="text-muted">Average Wait Time: {{ average_wait_time }} minutes</small>
+                        </div>
+                        <div>
+                            <a href="{% url 'receptionist:receptionist_create_visit' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Add to Queue
+                            </a>
+                            <button class="btn btn-outline-secondary" onclick="window.print()">
+                                <i class="bi bi-printer"></i> Print Queue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Waiting Patients -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-hourglass-split text-warning"></i> Waiting Patients
+                        <span class="badge bg-warning">{{ waiting_patients.count }}</span>
+                    </h5>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Queue #</th>
+                                    <th>Patient</th>
+                                    <th>Patient #</th>
+                                    <th>Visit Type</th>
+                                    <th>Priority</th>
+                                    <th>Chief Complaint</th>
+                                    <th>Arrival Time</th>
+                                    <th>Wait Time</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for visit in waiting_patients %}
+                                <tr class="{% if visit.priority_level <= 2 %}table-danger{% endif %}">
+                                    <td>
+                                        <strong class="text-primary">{{ visit.queue_number }}</strong>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'receptionist:receptionist_patient_detail' visit.patient.id %}">
+                                            {{ visit.patient.full_name }}
+                                        </a>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="bi bi-gender-{{ visit.patient.gender|lower }}"></i> 
+                                            {{ visit.patient.age }} yrs
+                                        </small>
+                                    </td>
+                                    <td>{{ visit.patient.patient_number }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if visit.visit_type == 'EMERGENCY' %}danger{% else %}info{% endif %}">
+                                            {{ visit.get_visit_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if visit.priority_level == 1 %}danger{% elif visit.priority_level == 2 %}warning{% else %}secondary{% endif %}">
+                                            Priority {{ visit.priority_level }}
+                                        </span>
+                                    </td>
+                                    <td>{{ visit.chief_complaint|truncatewords:10 }}</td>
+                                    <td>{{ visit.arrival_time|time:"H:i" }}</td>
+                                    <td>
+                                        <span class="{% if visit.wait_time_minutes > 60 %}text-danger{% elif visit.wait_time_minutes > 30 %}text-warning{% endif %}">
+                                            {{ visit.wait_time_minutes }} min
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'receptionist:receptionist_print_queue_ticket' visit.id %}" 
+                                           class="btn btn-sm btn-outline-primary" target="_blank">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted">
+                                        <i class="bi bi-inbox"></i> No patients in queue
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Statuses -->
+    <div class="row mt-3">
+        <!-- In Triage -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-heart-pulse text-info"></i> In Triage
+                        <span class="badge bg-info">{{ in_triage.count }}</span>
+                    </h5>
+                    <ul class="list-group list-group-flush">
+                        {% for visit in in_triage %}
+                        <li class="list-group-item">
+                            <strong>Q{{ visit.queue_number }}</strong> - {{ visit.patient.full_name }}
+                            <br>
+                            <small class="text-muted">{{ visit.arrival_time|time:"H:i" }}</small>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-muted text-center">No patients</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- In Consultation -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-person-video2 text-purple"></i> In Consultation
+                        <span class="badge" style="background-color: #9C27B0;">{{ in_consultation.count }}</span>
+                    </h5>
+                    <ul class="list-group list-group-flush">
+                        {% for visit in in_consultation %}
+                        <li class="list-group-item">
+                            <strong>Q{{ visit.queue_number }}</strong> - {{ visit.patient.full_name }}
+                            <br>
+                            <small class="text-muted">{{ visit.arrival_time|time:"H:i" }}</small>
+                        </li>
+                        {% empty %}
+                        <li class="list-group-item text-muted text-center">No patients</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- In Pharmacy/Lab -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-capsule text-success"></i> Other Services
+                    </h5>
+                    <div class="mb-3">
+                        <strong>Laboratory</strong>
+                        <span class="badge bg-primary">{{ in_lab.count }}</span>
+                    </div>
+                    <div>
+                        <strong>Pharmacy</strong>
+                        <span class="badge bg-success">{{ in_pharmacy.count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.card-icon {
+    width: 50px;
+    height: 50px;
+}
+
+.table-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+@media print {
+    .btn, .breadcrumb, .card-title button {
+        display: none;
+    }
+}
+</style>
+
+<script>
+// Auto-refresh every 30 seconds
+setTimeout(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

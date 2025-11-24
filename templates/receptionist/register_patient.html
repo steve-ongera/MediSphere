@@ -1,0 +1,239 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}Register New Patient{% endblock %}
+
+{% block content %}
+<div class="pagetitle">
+    <h1><i class="bi bi-person-plus"></i> Register New Patient</h1>
+    <nav>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'receptionist:receptionist_dashboard' %}">Home</a></li>
+            <li class="breadcrumb-item">Patient Management</li>
+            <li class="breadcrumb-item active">Register New Patient</li>
+        </ol>
+    </nav>
+</div>
+
+<section class="section">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Patient Registration Form</h5>
+                    
+                    <form method="post" class="row g-3">
+                        {% csrf_token %}
+                        
+                        <!-- Personal Information -->
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="bi bi-person"></i> Personal Information
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">First Name *</label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="text-danger small">{{ form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Middle Name</label>
+                            {{ form.middle_name }}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Last Name *</label>
+                            {{ form.last_name }}
+                            {% if form.last_name.errors %}
+                                <div class="text-danger small">{{ form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Date of Birth *</label>
+                            {{ form.date_of_birth }}
+                            {% if form.date_of_birth.errors %}
+                                <div class="text-danger small">{{ form.date_of_birth.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Gender *</label>
+                            {{ form.gender }}
+                            {% if form.gender.errors %}
+                                <div class="text-danger small">{{ form.gender.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">ID Number</label>
+                            {{ form.id_number }}
+                            <small class="text-muted">National ID or Birth Certificate Number</small>
+                        </div>
+                        
+                        <!-- Contact Information -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="bi bi-telephone"></i> Contact Information
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Phone Number *</label>
+                            {{ form.phone_number }}
+                            {% if form.phone_number.errors %}
+                                <div class="text-danger small">{{ form.phone_number.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Alternate Phone</label>
+                            {{ form.alternate_phone }}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Email</label>
+                            {{ form.email }}
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">County *</label>
+                            {{ form.county }}
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Sub County</label>
+                            {{ form.sub_county }}
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Ward</label>
+                            {{ form.ward }}
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Village/Estate</label>
+                            {{ form.village }}
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Postal Address</label>
+                            {{ form.postal_address }}
+                        </div>
+                        
+                        <!-- Next of Kin -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="bi bi-people"></i> Next of Kin Information
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Next of Kin Name *</label>
+                            {{ form.next_of_kin_name }}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Relationship *</label>
+                            {{ form.next_of_kin_relationship }}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Next of Kin Phone *</label>
+                            {{ form.next_of_kin_phone }}
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Next of Kin Address</label>
+                            {{ form.next_of_kin_address }}
+                        </div>
+                        
+                        <!-- Medical Information -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="bi bi-heart-pulse"></i> Medical Information
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Blood Group</label>
+                            {{ form.blood_group }}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Allergies</label>
+                            {{ form.allergies }}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Chronic Conditions</label>
+                            {{ form.chronic_conditions }}
+                        </div>
+                        
+                        <!-- NHIF Information -->
+                        <div class="col-12 mt-4">
+                            <h6 class="text-primary border-bottom pb-2">
+                                <i class="bi bi-shield-check"></i> NHIF Information
+                            </h6>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">NHIF Status</label>
+                            {{ form.nhif_status }}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">NHIF Number</label>
+                            {{ form.nhif_number }}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label">Principal Member (if dependent)</label>
+                            {{ form.nhif_principal_name }}
+                        </div>
+                        
+                        <!-- Additional Notes -->
+                        <div class="col-12 mt-4">
+                            <label class="form-label">Additional Notes</label>
+                            {{ form.notes }}
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="col-12 mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Register Patient
+                            </button>
+                            <button type="submit" name="save_and_visit" class="btn btn-success">
+                                <i class="bi bi-save"></i> Register & Create Visit
+                            </button>
+                            <a href="{% url 'receptionist:receptionist_dashboard' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.form-label {
+    font-weight: 600;
+    color: #1a76d1;
+    font-size: 0.9rem;
+}
+
+.card {
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+}
+
+h6.text-primary {
+    font-weight: 700;
+}
+</style>
+{% endblock %}

@@ -26,7 +26,7 @@ urlpatterns = [
     path('dashboard/laboratory/', views.lab_dashboard, name='lab_dashboard'),
     path('dashboard/radiology/', views.radiology_dashboard, name='radiology_dashboard'),
     path('dashboard/pharmacy/', views.pharmacy_dashboard, name='pharmacy_dashboard'),
-    path('dashboard/reception/', views.reception_dashboard, name='reception_dashboard'),
+    path('dashboard/reception/', views.receptionist_dashboard_view, name='reception_dashboard'),
     path('dashboard/billing/', views.billing_dashboard, name='billing_dashboard'),
     path('dashboard/nhif/', views.nhif_dashboard, name='nhif_dashboard'),
     path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
@@ -81,6 +81,26 @@ urlpatterns = [
     # AJAX ENDPOINTS
     # =============================================================================
     path('ajax/patient-search/', views.patient_search_ajax, name='patient-search-ajax'),
-    path('ajax/visit-search/', views.visit_search_ajax, name='visit-search-ajax')
+    path('ajax/visit-search/', views.visit_search_ajax, name='visit-search-ajax'),
+    
+    path('dashboard/receptionist/', views.receptionist_dashboard_view, name='receptionist_dashboard'),
+    
+    path('patients/register/',  views.receptionist_register_patient_view,  name='receptionist_register_patient'),
+    path('patients/records/', views.receptionist_patient_records_view,  name='receptionist_patient_records'),
+    path('patients/search/',  views.receptionist_search_patient_view,  name='receptionist_search_patient'),
+    path('patients/<int:patient_id>/', views.receptionist_patient_detail_view,  name='receptionist_patient_detail'),
+    path('patients/<int:patient_id>/edit/', views.receptionist_edit_patient_view, name='receptionist_edit_patient'),
+    path('queue/', views.receptionist_queue_management_view, name='receptionist_queue_management'),
+    path('queue/create-visit/', views.receptionist_create_visit_view,  name='receptionist_create_visit'),
+    path('queue/create-visit/<int:patient_id>/',  views.receptionist_create_visit_view,  name='receptionist_create_visit_for_patient'),
+    path('queue/print-ticket/<int:visit_id>/',  views.receptionist_print_queue_ticket_view, name='receptionist_print_queue_ticket'),
+
+    path('appointments/schedule/',  views.receptionist_schedule_appointment_view,  name='receptionist_schedule_appointment'),
+    path('appointments/', views.receptionist_view_appointments_view, name='receptionist_view_appointments'),
+    path('appointments/<int:appointment_id>/', views.receptionist_appointment_detail_view,  name='receptionist_appointment_detail'),
+    path('appointments/<int:appointment_id>/update-status/', views.receptionist_update_appointment_status_view, name='receptionist_update_appointment_status'),
+    path('appointments/<int:appointment_id>/cancel/', views.receptionist_cancel_appointment_view,  name='receptionist_cancel_appointment'),
+    path('appointments/<int:appointment_id>/check-in/', views.receptionist_check_in_patient_view, name='receptionist_check_in_patient'),
+    path('reports/daily/', views.receptionist_daily_report_view, name='receptionist_daily_report'),
   
 ]
