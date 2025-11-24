@@ -2156,6 +2156,9 @@ def visits_detail(request, visit_number):
 # PATIENT QUEUE (Waiting for Consultation)
 # =============================================================================
 
+from django.db.models import Avg, ExpressionWrapper, F, DurationField
+from django.db.models.functions import Extract
+
 @login_required
 def patient_queue(request):
     """
@@ -2168,7 +2171,7 @@ def patient_queue(request):
     queue = PatientVisit.objects.filter(
         status='CONSULTATION',
         visit_date=timezone.now().date()
-    ).select_related('patient').order_by('priority_level', 'arrival_time')
+    ).select_related('patient', 'triage').order_by('priority_level', 'arrival_time')
     
     # Get consultations in progress
     in_consultation = PatientVisit.objects.filter(
@@ -2179,7 +2182,13 @@ def patient_queue(request):
     
     # Statistics
     total_waiting = queue.count()
-    average_wait_time = queue.aggregate(Avg('wait_time_minutes'))['wait_time_minutes__avg'] or 0
+    
+    # Calculate average wait time manually since wait_time_minutes is a property
+    if total_waiting > 0:
+        total_wait_minutes = sum(visit.wait_time_minutes for visit in queue)
+        average_wait_time = round(total_wait_minutes / total_waiting, 1)
+    else:
+        average_wait_time = 0
     
     # Priority breakdown
     critical = queue.filter(priority_level=1).count()
@@ -2191,7 +2200,7 @@ def patient_queue(request):
         'queue': queue,
         'in_consultation': in_consultation,
         'total_waiting': total_waiting,
-        'average_wait_time': round(average_wait_time, 1),
+        'average_wait_time': average_wait_time,
         'critical': critical,
         'emergency': emergency,
         'urgent': urgent,
